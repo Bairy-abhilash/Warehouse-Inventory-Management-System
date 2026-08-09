@@ -1,55 +1,39 @@
 # Warehouse Inventory & Management System
 
 
-# Mental model
+## Mental model
+```
 ┌────────────────────────────────────┐
-│             REACT                  │
-│          Presentation              │
-│                                    │
+│              REACT                 │
+│           Presentation             │
 │ Dashboard | Products | Inventory   │
 └─────────────────┬──────────────────┘
-                  │
                   │ HTTP + JSON
                   ↓
 ┌────────────────────────────────────┐
-│             FASTAPI                │
+│              FASTAPI               │
 │             API Layer              │
-│                                    │
-│ GET /products                      │
-│ POST /products                     │
-│ GET /inventory                     │
-│ POST /purchase-orders              │
+│ GET /products | POST /products     │
+│ GET /inventory | POST /purchase... │
 └─────────────────┬──────────────────┘
+                  │
                   ↓
 ┌────────────────────────────────────┐
-│         BUSINESS LOGIC             │
-│                                    │
-│ Product Service                    │
-│ Inventory Service                  │
-│ Purchase Order Service             │
-│ Authentication                    │
-│ Validation                         │
-│ Authorization                      │
+│          BUSINESS LOGIC            │
+│ Product | Inventory | Orders       │
+│ Auth | Validation | Authorization  │
 └─────────────────┬──────────────────┘
+                  │
                   ↓
 ┌────────────────────────────────────┐
-│            SQLALCHEMY              │
-│               ORM                  │
-│                                    │
-│ Python Objects ↔ Database Tables   │
+│             SQLALCHEMY             │
+│   Python Objects ↔ DB Tables       │
 └─────────────────┬──────────────────┘
+                  │
                   ↓
 ┌────────────────────────────────────┐
-│           POSTGRESQL               │
-│                                    │
-│ Users                              │
-│ Roles                              │
-│ Products                           │
-│ Categories                         │
-│ Warehouses                         │
-│ Suppliers                          │
-│ Inventory                          │
-│ Purchase Orders                    │
-│ Purchase Order Items               │
-│ Audit Logs                         │
+│             POSTGRESQL             │
+│ Users | Roles | Products | Stock   │
+│ Warehouses | Suppliers | Orders    │
 └────────────────────────────────────┘
+```
