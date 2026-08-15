@@ -26,14 +26,15 @@
                   │
                   ↓
 ┌────────────────────────────────────┐
-│             SQLALCHEMY             │
-│   Python Objects ↔ DB Tables       │
+│          SQLALCHEMY  ORM           │
+│   Python Objects <-> DB Tables     │
 └─────────────────┬──────────────────┘
                   │
                   ↓
 ┌────────────────────────────────────┐
 │             POSTGRESQL             │
 │ Users | Roles | Products | Stock   │
-│ Warehouses | Suppliers | Orders    │
+│ Warehouses | Suppliers | Orders    |
+| Audit Logs | Purchase Order Items  |
 └────────────────────────────────────┘
 ```
