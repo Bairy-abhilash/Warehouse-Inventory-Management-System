@@ -1,0 +1,43 @@
+# ─── Python ───────────────────────────────────────────
+# The virtual environment — thousands of files, machine-specific
+venv/
+.venv/
+env/
+
+# Python cache files (compiled .pyc files — regenerated automatically)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# ─── Secrets & Environment ────────────────────────────
+# NEVER commit .env — it contains passwords and API keys
+.env
+.env.local
+.env.production
+
+# ─── IDE / Editor ─────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── OS files ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Testing / coverage ───────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ─── Database (SQLite for local dev, if used) ─────────
+*.db
+*.sqlite3
