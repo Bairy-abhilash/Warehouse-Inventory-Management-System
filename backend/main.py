@@ -41,6 +41,16 @@ class ProductResponse(BaseModel):
     in_stock: bool
 
 
+class ProductUpdate(BaseModel):
+    # For partial updates (PATCH) every field is OPTIONAL.
+    # The client only sends the fields they want to change.
+    # We still keep the same validation rules (e.g. price > 0).
+    name: str | None = Field(None, min_length=2, max_length=100)
+    category: str | None = None
+    price: float | None = Field(None, gt=0)
+    in_stock: bool | None = None
+
+
 @app.get("/")
 def home():
     return {"message": "Welcome to the Inventory Management API!"}
@@ -95,4 +105,55 @@ def get_product(product_id: int):
         if product["id"] == product_id:
             return product
     # We didn't find a product with that id — return a proper 404
+    raise HTTPException(status_code=404, detail=f"Product with id {product_id} not found")
+
+
+@app.put("/products/{product_id}", response_model=ProductResponse)
+def update_product_entirely(product_id: int, product: ProductCreate):
+    """
+    PUT: replace the ENTIRE product with the data sent.
+    The client must send every field (same schema as creating).
+    If the product doesn't exist, return 404.
+    """
+    for existing in products_db:
+        if existing["id"] == product_id:
+            existing["name"] = product.name
+            existing["category"] = product.category
+            existing["price"] = product.price
+            existing["in_stock"] = product.in_stock
+            return existing
+
+    raise HTTPException(status_code=404, detail=f"Product with id {product_id} not found")
+
+
+@app.patch("/products/{product_id}", response_model=ProductResponse)
+def update_product_partially(product_id: int, updates: ProductUpdate):
+    """
+    PATCH: update ONLY the fields provided, leave the rest untouched.
+    Uses exclude_unset=True so we can tell the difference between
+    "the client didn't send this field" and "the client sent null/false".
+    """
+    for existing in products_db:
+        if existing["id"] == product_id:
+            # .model_dump(exclude_unset=True) returns ONLY the fields that
+            # were actually present in the JSON request body.
+            data = updates.model_dump(exclude_unset=True)
+
+            # Apply each provided update
+            for key, value in data.items():
+                existing[key] = value
+
+            return existing
+
+    raise HTTPException(status_code=404, detail=f"Product with id {product_id} not found")
+
+
+@app.delete("/products/{product_id}", status_code=204)
+def delete_product(product_id: int):
+    """Delete a product. Returns 204 No Content on success."""
+    for index, existing in enumerate(products_db):
+        if existing["id"] == product_id:
+            products_db.pop(index)
+            return  # 204 means "success, nothing to return"
+
     raise HTTPException(status_code=404, detail=f"Product with id {product_id} not found")
