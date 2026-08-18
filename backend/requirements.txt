@@ -4,3 +4,13 @@ fastapi==0.115.0
 
 # Uvicorn 
 uvicorn[standard]==0.30.6
+
+# ─── Database ─────────────────────────────────────────
+# SQLAlchemy
+SQLAlchemy==2.0.35
+
+# PostgreSQL 
+psycopg2-binary==2.9.9
+
+# Loads variables from our .env file into os.environ at startup
+python-dotenv==1.0.1
