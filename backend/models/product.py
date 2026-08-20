@@ -60,5 +60,10 @@ class Product(Base):
     # matches the name on the Category model.
     category = relationship("Category", back_populates="products")
 
+    # One product can appear on many inventory rows (one per warehouse)
+    # and on many purchase-order line items over time.
+    inventory = relationship("Inventory", back_populates="product")
+    purchase_order_items = relationship("PurchaseOrderItem", back_populates="product")
+
     def __repr__(self):
         return f"<Product id={self.id} sku={self.sku!r} name={self.name!r}>"
