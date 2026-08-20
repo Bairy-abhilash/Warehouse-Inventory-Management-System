@@ -1,14 +1,30 @@
 """
 Models package
 ==============
-Import every model here so that:
-  1. SQLAlchemy's Base.metadata knows about all tables, and
-  2. Relationships referenced by string name (e.g. relationship("Product"))
-     can be resolved, because importing this module loads the Product class.
-  3. Other code can do:  from models import Category, Product
+Import every model here so:
+  1. SQLAlchemy's Base.metadata registers all tables.
+  2. string-based relationships (e.g. relationship("Product")) resolve,
+     because importing this module loads every class.
+  3. Callers can simply do:  from models import Product, Category, ...
 """
 
+from models.role import Role
+from models.user import User
 from models.category import Category
+from models.warehouse import Warehouse
+from models.supplier import Supplier
 from models.product import Product
+from models.inventory import Inventory
+from models.purchase_order import PurchaseOrder, PurchaseOrderItem
 
-__all__ = ["Category", "Product"]
+__all__ = [
+    "Role",
+    "User",
+    "Category",
+    "Warehouse",
+    "Supplier",
+    "Product",
+    "Inventory",
+    "PurchaseOrder",
+    "PurchaseOrderItem",
+]
