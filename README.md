@@ -1,5 +1,20 @@
 # Warehouse Inventory & Management System
 
+## File structure
+```
+backend/
+├── app/
+│   ├── main.py
+│   ├── core/config.py
+│   ├── db/session.py
+│   ├── models/
+│   ├── schemas/
+│   ├── routers/
+│   └── services/
+├── alembic/
+└── alembic.ini
+
+```
 
 ## The Layered Architecture
 ```
