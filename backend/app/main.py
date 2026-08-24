@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.routers import (
+    auth,
     categories,
     inventory,
     products,
@@ -38,6 +39,7 @@ app.add_middleware(
 )
 
 # Register all routers under /api/v1
+app.include_router(auth.router, prefix="/api/v1")
 app.include_router(categories.router, prefix="/api/v1")
 app.include_router(products.router, prefix="/api/v1")
 app.include_router(warehouses.router, prefix="/api/v1")
