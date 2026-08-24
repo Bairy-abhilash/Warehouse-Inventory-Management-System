@@ -5,7 +5,9 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
 from app.db.session import get_db
+from app.models import User
 from app.schemas.purchase_order import (
     PurchaseOrderCreate,
     PurchaseOrderResponse,
@@ -13,7 +15,11 @@ from app.schemas.purchase_order import (
 )
 from app.services import purchase_order_service
 
-router = APIRouter(prefix="/purchase-orders", tags=["Purchase Orders"])
+router = APIRouter(
+    prefix="/purchase-orders",
+    tags=["Purchase Orders"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 @router.get("/", response_model=list[PurchaseOrderResponse])

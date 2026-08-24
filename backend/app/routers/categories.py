@@ -3,11 +3,19 @@
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
 from app.db.session import get_db
+from app.models import User
 from app.schemas.category import CategoryCreate, CategoryResponse, CategoryUpdate
 from app.services import category_service
 
-router = APIRouter(prefix="/categories", tags=["Categories"])
+# Every endpoint in this router requires a valid JWT, because we pass
+# dependencies=[Depends(get_current_user)] to the APIRouter itself.
+router = APIRouter(
+    prefix="/categories",
+    tags=["Categories"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 @router.get("/", response_model=list[CategoryResponse])

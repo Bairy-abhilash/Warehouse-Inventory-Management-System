@@ -5,11 +5,17 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
 from app.db.session import get_db
+from app.models import User
 from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate
 from app.services import product_service
 
-router = APIRouter(prefix="/products", tags=["Products"])
+router = APIRouter(
+    prefix="/products",
+    tags=["Products"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 @router.get("/", response_model=list[ProductResponse])
