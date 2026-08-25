@@ -34,6 +34,20 @@ class Settings:
         "http://127.0.0.1:3000",
     ]
 
+    # ── JWT / Authentication ──────────────────────────────
+    # Secret used to SIGN access tokens. In production this MUST be a long
+    # random string — generate one with:  openssl rand -hex 32
+    # For local dev we fall back to a clearly-development value.
+    SECRET_KEY: str = os.environ.get(
+        "SECRET_KEY",
+        "dev-only-secret-change-me-with-openssl-rand-hex-32",
+    )
+    ALGORITHM: str = "HS256"
+    # How long a login token stays valid (in minutes)
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
+        os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
+    )
+
 
 # A single settings instance used across the app.
 settings = Settings()
