@@ -49,8 +49,8 @@ if config.config_file_name is not None:
 # ── Import our models so Base.metadata knows about every table ──
 # Importing the models package triggers all model class definitions,
 # which registers every table on Base.metadata.
-from database import Base  # noqa: E402
-import models  # noqa: F401, E402
+from app.db.session import Base  # noqa: E402
+import app.models  # noqa: F401, E402
 
 # This is the metadata Alembic compares against the live database.
 target_metadata = Base.metadata
