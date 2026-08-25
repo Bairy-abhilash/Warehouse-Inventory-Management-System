@@ -1,13 +1,17 @@
-"""Inventory routes."""
+"""Inventory routes.
+
+Permission model:
+  - any authenticated user can read stock levels
+  - only admin/manager can adjust stock
+"""
 
 from typing import Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_roles
 from app.db.session import get_db
-from app.models import User
 from app.schemas.inventory import InventoryListResponse, StockAdjustment
 from app.services import inventory_service
 
@@ -29,7 +33,10 @@ def list_inventory(
     )
 
 
-@router.post("/adjust")
+@router.post(
+    "/adjust",
+    dependencies=[Depends(require_roles("admin", "manager"))],
+)
 def adjust_stock(
     product_id: int,
     warehouse_id: int,
