@@ -40,12 +40,23 @@ class PurchaseOrderItem(Base):
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     quantity = Column(Integer, nullable=False)
     unit_price = Column(Numeric(12, 2), nullable=False)
+    # How many units have been received so far. Enables partial deliveries.
+    received_quantity = Column(Integer, nullable=False, default=0, server_default="0")
 
     purchase_order = relationship("PurchaseOrder", back_populates="items")
     product = relationship("Product", back_populates="purchase_order_items")
 
+    @property
+    def is_fully_received(self) -> bool:
+        return self.received_quantity >= self.quantity
+
+    @property
+    def line_total(self):
+        return self.unit_price * self.quantity
+
     def __repr__(self):
         return (
             f"<POItem po={self.purchase_order_id} "
-            f"product={self.product_id} qty={self.quantity}>"
+            f"product={self.product_id} qty={self.quantity} "
+            f"received={self.received_quantity}>"
         )
