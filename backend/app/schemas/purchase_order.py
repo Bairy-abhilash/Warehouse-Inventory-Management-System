@@ -7,6 +7,7 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
+# ── Items ────────────────────────────────────────────────────────
 class POItemCreate(BaseModel):
     product_id: int
     quantity: int = Field(..., gt=0)
@@ -21,19 +22,16 @@ class POItemResponse(BaseModel):
     product_id: int
     quantity: int
     unit_price: Decimal
+    received_quantity: int = 0
 
 
+# ── Purchase Order ───────────────────────────────────────────────
 class PurchaseOrderCreate(BaseModel):
+    # created_by is NOT accepted from the client — the router sets it from
+    # the authenticated user's token, so clients can't impersonate.
     supplier_id: int
-    created_by: int = Field(..., description="ID of the user creating this order")
-    status: str = Field(default="draft", max_length=30)
-    total_amount: Optional[Decimal] = Field(default=None, ge=0)
     items: List[POItemCreate] = Field(..., min_length=1)
-
-
-class PurchaseOrderUpdate(BaseModel):
-    status: Optional[str] = Field(None, max_length=30)
-    total_amount: Optional[Decimal] = Field(None, ge=0)
+    notes: Optional[str] = None
 
 
 class PurchaseOrderResponse(BaseModel):
@@ -46,3 +44,20 @@ class PurchaseOrderResponse(BaseModel):
     status: str
     total_amount: Optional[Decimal] = None
     items: List[POItemResponse] = []
+
+
+# ── Workflow ─────────────────────────────────────────────────────
+class StatusUpdate(BaseModel):
+    """Body for PATCH /purchase-orders/{id}/status."""
+    status: str = Field(..., description="New status: submitted, approved, cancelled")
+
+
+# ── Receiving ────────────────────────────────────────────────────
+class ReceiveItem(BaseModel):
+    item_id: int
+    quantity: int = Field(..., gt=0)
+
+
+class ReceiveRequest(BaseModel):
+    """Body for POST /purchase-orders/{id}/receive."""
+    items: List[ReceiveItem] = Field(..., min_length=1)
