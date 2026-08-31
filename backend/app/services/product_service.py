@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.errors import AppException
 from app.models import Product, Category, Supplier
 from app.schemas.product import ProductCreate, ProductUpdate
+from app.services import audit_service
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,9 @@ def create_product(db: Session, data: ProductCreate) -> Product:
     obj = Product(**data.model_dump())
     db.add(obj)
     try:
+        audit_service.log_action(
+            db, user_id=None, action="CREATE", entity_type="product", entity_id=None, details=f"Created product {data.name} (SKU: {data.sku})"
+        )
         db.commit()
     except IntegrityError as exc:
         db.rollback()
@@ -120,6 +124,9 @@ def update_product(db: Session, product_id: int, data: ProductUpdate) -> Product
 def delete_product(db: Session, product_id: int) -> None:
     obj = get_product(db, product_id)
     try:
+        audit_service.log_action(
+            db, user_id=None, action="DELETE", entity_type="product", entity_id=product_id, details=f"Deleted product {obj.name}"
+        )
         db.delete(obj)
         db.commit()
     except IntegrityError as exc:

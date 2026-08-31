@@ -12,6 +12,7 @@ from app.models.supplier import Supplier
 from app.models.product import Product
 from app.models.inventory import Inventory
 from app.models.purchase_order import PurchaseOrder, PurchaseOrderItem
+from app.models.audit_log import AuditLog
 
 __all__ = [
     "Role",
@@ -23,4 +24,5 @@ __all__ = [
     "Inventory",
     "PurchaseOrder",
     "PurchaseOrderItem",
+    "AuditLog",
 ]
