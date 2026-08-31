@@ -15,6 +15,7 @@ from app.core.logging import logger
 from app.core.middleware import register_middleware
 from app.db.session import engine
 from app.routers import (
+    audit_logs,
     auth,
     categories,
     dashboard,
@@ -54,6 +55,7 @@ app.include_router(suppliers.router, prefix="/api/v1")
 app.include_router(inventory.router, prefix="/api/v1")
 app.include_router(purchase_orders.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
+app.include_router(audit_logs.router, prefix="/api/v1")
 
 
 @app.on_event("startup")
