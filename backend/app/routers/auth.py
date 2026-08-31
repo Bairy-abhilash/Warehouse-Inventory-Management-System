@@ -27,6 +27,11 @@ def _user_to_response(user: User) -> UserResponse:
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def register(payload: UserRegister, db: Session = Depends(get_db)):
+    """
+    Register a new user. New users get the default "staff" role (id 3).
+    Returns an access token so registration logs you in immediately.
+    """
+    # Email must be unique
     existing = db.scalars(select(User).where(User.email == payload.email)).first()
     if existing:
         raise HTTPException(
@@ -34,7 +39,7 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
             detail="Email is already registered",
         )
 
-    staff_role = db.scalars(select(Role).where(Role.name == "staff")).first()
+    staff_role = db.scalars(select(Role).where(Role.name.ilike("staff"))).first()
     if not staff_role:
         raise HTTPException(status_code=500, detail="Staff role not found in database")
 
@@ -55,6 +60,11 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 def login(payload: UserLogin, db: Session = Depends(get_db)):
+    """
+    Verify email + password and return a JWT access token.
+    We return the same generic error for unknown email or wrong password
+    (so attackers can't enumerate which emails exist).
+    """
     user = db.scalars(
         select(User).options(selectinload(User.role)).where(User.email == payload.email)
     ).first()
@@ -71,4 +81,5 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=UserResponse)
 def me(current_user: User = Depends(get_current_user)):
+    """Return the profile of the user who owns the supplied token."""
     return _user_to_response(current_user)

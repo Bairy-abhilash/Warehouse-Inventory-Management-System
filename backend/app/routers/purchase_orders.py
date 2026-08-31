@@ -1,23 +1,18 @@
-"""Purchase order routes.
-
-Permission model:
-  - any authenticated user can view POs
-  - admin/manager can create, update status, delete
-  - admin/manager/staff can receive items (will be added when we build
-    the receiving workflow)
-"""
+"""Purchase order routes."""
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
 from app.db.session import get_db
+from app.models import User
 from app.schemas.purchase_order import (
     PurchaseOrderCreate,
     PurchaseOrderResponse,
-    PurchaseOrderUpdate,
+    ReceiveRequest,
+    StatusUpdate,
 )
 from app.services import purchase_order_service
 
@@ -47,19 +42,45 @@ def get_purchase_order(po_id: int, db: Session = Depends(get_db)):
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_roles("admin", "manager"))],
 )
-def create_purchase_order(payload: PurchaseOrderCreate, db: Session = Depends(get_db)):
-    return purchase_order_service.create_purchase_order(db, payload)
+def create_purchase_order(
+    payload: PurchaseOrderCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # The creator is always the authenticated user — never trust a client-sent id.
+    # Pydantic v2 models are immutable, so we build the service input as a dict.
+    data = payload.model_dump()
+    data["created_by"] = current_user.id
+    return purchase_order_service.create_purchase_order_dict(db, data)
 
 
 @router.patch(
-    "/{po_id}",
+    "/{po_id}/status",
     response_model=PurchaseOrderResponse,
     dependencies=[Depends(require_roles("admin", "manager"))],
 )
-def update_purchase_order(
-    po_id: int, payload: PurchaseOrderUpdate, db: Session = Depends(get_db)
+def update_po_status(
+    po_id: int,
+    payload: StatusUpdate,
+    db: Session = Depends(get_db),
 ):
-    return purchase_order_service.update_purchase_order(db, po_id, payload)
+    return purchase_order_service.update_status(db, po_id, payload.status)
+
+
+@router.post(
+    "/{po_id}/receive",
+    response_model=PurchaseOrderResponse,
+    dependencies=[Depends(require_roles("admin", "manager", "staff"))],
+)
+def receive_po(
+    po_id: int,
+    payload: ReceiveRequest,
+    warehouse_id: int = Query(..., description="Warehouse receiving the stock"),
+    db: Session = Depends(get_db),
+):
+    return purchase_order_service.receive_purchase_order(
+        db, po_id, payload, warehouse_id
+    )
 
 
 @router.delete(

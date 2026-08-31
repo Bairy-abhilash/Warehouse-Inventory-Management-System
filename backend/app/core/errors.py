@@ -71,7 +71,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         # Pydantic validation errors — reshape into a concise list.
         errors = [
             {
-                "field": ".".join(str(p) for p in e.get("loc", []) if p != "body"),
+                "field": ".".join(str(p) for p in e.get("loc", []) if p != "body") or "body",
                 "message": e.get("msg"),
                 "type": e.get("type"),
             }
