@@ -2,11 +2,12 @@
 Authentication routes: register, login, and current-user profile.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user
+from app.core.errors import AppException
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.session import get_db
 from app.models import Role, User
@@ -34,14 +35,19 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
     # Email must be unique
     existing = db.scalars(select(User).where(User.email == payload.email)).first()
     if existing:
-        raise HTTPException(
+        raise AppException(
+            message="Email is already registered",
             status_code=status.HTTP_409_CONFLICT,
-            detail="Email is already registered",
+            code="conflict",
         )
 
     staff_role = db.scalars(select(Role).where(Role.name.ilike("staff"))).first()
     if not staff_role:
-        raise HTTPException(status_code=500, detail="Staff role not found in database")
+        raise AppException(
+            message="Staff role not found in database",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            code="internal_error",
+        )
 
     user = User(
         username=payload.username,
@@ -70,9 +76,10 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
     ).first()
 
     if not user or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(
+        raise AppException(
+            message="Incorrect email or password",
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            code="unauthorized",
         )
 
     token = create_access_token(user.id, {"role": user.role.name})
