@@ -10,6 +10,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.errors import AppException
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models import User
@@ -71,9 +72,10 @@ def require_roles(*allowed: str):
     def _checker(current_user: User = Depends(get_current_user)) -> User:
         user_role_name = current_user.role.name if (current_user and current_user.role) else ""
         if user_role_name.lower() not in allowed_lower:
-            raise HTTPException(
+            raise AppException(
+                message=f"Role '{user_role_name}' is not allowed to perform this action",
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Role '{user_role_name}' is not allowed to perform this action",
+                code="forbidden",
             )
         return current_user
     return _checker
