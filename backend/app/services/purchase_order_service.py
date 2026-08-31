@@ -18,10 +18,11 @@ Rules enforced:
 from decimal import Decimal
 from typing import List, Optional
 
-from fastapi import HTTPException, status
+from fastapi import status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.errors import AppException
 from app.core.logging import logger
 from app.models import (
     Inventory,
@@ -58,7 +59,7 @@ def list_purchase_orders(
     query = select(PurchaseOrder).options(selectinload(PurchaseOrder.items))
     if status_filter:
         if status_filter not in VALID_TRANSITIONS:
-            raise HTTPException(status_code=400, detail=f"Unknown status '{status_filter}'")
+            raise AppException(message=f"Unknown status '{status_filter}'", status_code=400, code="bad_request")
         query = query.where(PurchaseOrder.status == status_filter)
     return db.scalars(query.order_by(PurchaseOrder.id.desc())).all()
 
@@ -70,7 +71,7 @@ def get_purchase_order(db: Session, po_id: int) -> PurchaseOrder:
         .where(PurchaseOrder.id == po_id)
     ).first()
     if not po:
-        raise HTTPException(status_code=404, detail=f"Purchase order {po_id} not found")
+        raise AppException(message=f"Purchase order {po_id} not found", status_code=404, code="not_found")
     return po
 
 
@@ -79,15 +80,15 @@ def create_purchase_order(
 ) -> PurchaseOrder:
     # Validate references
     if not db.get(Supplier, data.supplier_id):
-        raise HTTPException(status_code=404, detail=f"Supplier {data.supplier_id} not found")
+        raise AppException(message=f"Supplier {data.supplier_id} not found", status_code=404, code="not_found")
     if not db.get(User, created_by):
-        raise HTTPException(status_code=404, detail=f"User {created_by} not found")
+        raise AppException(message=f"User {created_by} not found", status_code=404, code="not_found")
 
     # Validate all products exist
     for item in data.items:
         if not db.get(Product, item.product_id):
-            raise HTTPException(
-                status_code=404, detail=f"Product {item.product_id} not found"
+            raise AppException(
+                message=f"Product {item.product_id} not found", status_code=404, code="not_found"
             )
 
     total = _calculate_total(data.items)
@@ -129,14 +130,14 @@ def update_status(db: Session, po_id: int, new_status: str) -> PurchaseOrder:
     po = get_purchase_order(db, po_id)
 
     if new_status not in VALID_TRANSITIONS:
-        raise HTTPException(status_code=400, detail=f"Unknown status '{new_status}'")
+        raise AppException(message=f"Unknown status '{new_status}'", status_code=400, code="bad_request")
 
     allowed = VALID_TRANSITIONS.get(po.status, set())
     if new_status not in allowed:
-        raise HTTPException(
+        raise AppException(
+            message=f"Cannot transition PO from '{po.status}' to '{new_status}'. Allowed next states: {sorted(allowed) or ['(none)']}",
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Cannot transition PO from '{po.status}' to '{new_status}'. "
-                   f"Allowed next states: {sorted(allowed) or ['(none)']}",
+            code="conflict",
         )
 
     po.status = new_status
@@ -176,27 +177,17 @@ def receive_purchase_order(
     payload: ReceiveRequest,
     warehouse_id: int,
 ) -> PurchaseOrder:
-    """
-    Receive items against an approved PO.
-
-    For each received item:
-      - verify the PO is approved
-      - verify item belongs to this PO
-      - verify received quantity doesn't exceed ordered quantity
-      - increment inventory in the specified warehouse
-      - increment the item's received_quantity
-    If all items are fully received, set PO status to 'received'.
-    """
     po = get_purchase_order(db, po_id)
 
     if po.status != "approved":
-        raise HTTPException(
+        raise AppException(
+            message=f"Only approved POs can be received. Current status: '{po.status}'",
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Only approved POs can be received. Current status: '{po.status}'",
+            code="conflict",
         )
 
     if not db.get(Warehouse, warehouse_id):
-        raise HTTPException(status_code=404, detail=f"Warehouse {warehouse_id} not found")
+        raise AppException(message=f"Warehouse {warehouse_id} not found", status_code=404, code="not_found")
 
     # Build a map of item_id -> POItem for quick lookup
     items_map = {item.id: item for item in po.items}
@@ -204,20 +195,22 @@ def receive_purchase_order(
     for received in payload.items:
         item = items_map.get(received.item_id)
         if item is None:
-            raise HTTPException(
+            raise AppException(
+                message=f"Item {received.item_id} does not belong to PO {po_id}",
                 status_code=400,
-                detail=f"Item {received.item_id} does not belong to PO {po_id}",
+                code="bad_request",
             )
 
         new_received = item.received_quantity + received.quantity
         if new_received > item.quantity:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
+            raise AppException(
+                message=(
                     f"Cannot receive {received.quantity} of item {item.id}: "
                     f"ordered {item.quantity}, already received {item.received_quantity}, "
                     f"would exceed by {new_received - item.quantity}"
                 ),
+                status_code=status.HTTP_400_BAD_REQUEST,
+                code="bad_request",
             )
 
         # Update inventory
@@ -241,9 +234,10 @@ def receive_purchase_order(
 def delete_purchase_order(db: Session, po_id: int) -> None:
     po = get_purchase_order(db, po_id)
     if po.status != "draft":
-        raise HTTPException(
+        raise AppException(
+            message="Only draft purchase orders can be deleted",
             status_code=status.HTTP_409_CONFLICT,
-            detail="Only draft purchase orders can be deleted",
+            code="conflict",
         )
     db.delete(po)
     db.commit()

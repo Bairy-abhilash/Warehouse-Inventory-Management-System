@@ -3,11 +3,12 @@
 import logging
 from typing import List, Optional
 
-from fastapi import HTTPException, status
+from fastapi import status
 from sqlalchemy import select, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.errors import AppException
 from app.models import Product, Category, Supplier
 from app.schemas.product import ProductCreate, ProductUpdate
 
@@ -41,23 +42,26 @@ def list_products(
 def get_product(db: Session, product_id: int) -> Product:
     obj = db.get(Product, product_id)
     if not obj:
-        raise HTTPException(
+        raise AppException(
+            message=f"Product {product_id} not found",
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Product {product_id} not found",
+            code="not_found",
         )
     return obj
 
 
 def _validate_references(db: Session, category_id: Optional[int], supplier_id: Optional[int]) -> None:
     if category_id is not None and not db.get(Category, category_id):
-        raise HTTPException(
+        raise AppException(
+            message=f"Category {category_id} not found",
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Category {category_id} not found",
+            code="not_found",
         )
     if supplier_id is not None and not db.get(Supplier, supplier_id):
-        raise HTTPException(
+        raise AppException(
+            message=f"Supplier {supplier_id} not found",
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Supplier {supplier_id} not found",
+            code="not_found",
         )
 
 
@@ -66,9 +70,10 @@ def create_product(db: Session, data: ProductCreate) -> Product:
 
     existing = db.scalars(select(Product).where(Product.sku == data.sku)).first()
     if existing:
-        raise HTTPException(
+        raise AppException(
+            message="A product with this SKU already exists",
             status_code=status.HTTP_409_CONFLICT,
-            detail="A product with this SKU already exists",
+            code="conflict",
         )
 
     obj = Product(**data.model_dump())
@@ -79,9 +84,10 @@ def create_product(db: Session, data: ProductCreate) -> Product:
         db.rollback()
         # Log the real cause so it's visible in the server console.
         logger.exception("Database constraint violation while creating product")
-        raise HTTPException(
+        raise AppException(
+            message=f"Could not create product due to a database constraint: {exc.orig}",
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Could not create product due to a database constraint: {exc.orig}",
+            code="bad_request",
         )
     db.refresh(obj)
     return obj
@@ -98,9 +104,10 @@ def update_product(db: Session, product_id: int, data: ProductUpdate) -> Product
             select(Product).where(Product.sku == payload["sku"], Product.id != product_id)
         ).first()
         if clash:
-            raise HTTPException(
+            raise AppException(
+                message="A product with this SKU already exists",
                 status_code=status.HTTP_409_CONFLICT,
-                detail="A product with this SKU already exists",
+                code="conflict",
             )
 
     for key, value in payload.items():
@@ -118,7 +125,8 @@ def delete_product(db: Session, product_id: int) -> None:
     except IntegrityError as exc:
         db.rollback()
         logger.exception("Database constraint violation while deleting product")
-        raise HTTPException(
+        raise AppException(
+            message=f"Cannot delete product used by inventory or purchase orders: {exc.orig}",
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Cannot delete product used by inventory or purchase orders: {exc.orig}",
+            code="conflict",
         )
