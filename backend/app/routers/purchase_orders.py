@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, require_roles
 from app.db.session import get_db
 from app.models import User
+from app.schemas.pagination import PaginatedResponse
 from app.schemas.purchase_order import (
     PurchaseOrderCreate,
     PurchaseOrderResponse,
@@ -23,12 +24,26 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=list[PurchaseOrderResponse])
+@router.get("/", response_model=PaginatedResponse[PurchaseOrderResponse])
 def list_purchase_orders(
     status_filter: Optional[str] = None,
+    supplier_id: Optional[int] = None,
+    sort_by: str = Query("id", description="Field to sort by: id, order_date, total_amount, status"),
+    order: str = Query("desc", description="Sort direction: asc or desc"),
+    page: int = Query(1, ge=1, description="Page number"),
+    size: int = Query(10, ge=1, le=100, description="Page size"),
     db: Session = Depends(get_db),
 ):
-    return purchase_order_service.list_purchase_orders(db, status_filter=status_filter)
+    items, total, pages = purchase_order_service.list_purchase_orders(
+        db,
+        status_filter=status_filter,
+        supplier_id=supplier_id,
+        sort_by=sort_by,
+        order=order,
+        page=page,
+        size=size,
+    )
+    return PaginatedResponse.create(items=items, total=total, page=page, size=size)
 
 
 @router.get("/{po_id}", response_model=PurchaseOrderResponse)

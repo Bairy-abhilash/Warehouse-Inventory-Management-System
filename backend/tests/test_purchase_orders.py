@@ -96,6 +96,26 @@ def test_po_full_lifecycle_and_receiving(client, admin_headers, db_session):
     # 7. Check inventory stock updated
     inv_res = client.get(f"/api/v1/inventory/?warehouse_id={warehouse_id}", headers=admin_headers)
     assert inv_res.status_code == 200
-    inv_items = inv_res.json()
-    assert len(inv_items) == 1
-    assert inv_items[0]["quantity"] == 20
+    inv_data = inv_res.json()
+    assert "items" in inv_data
+    assert len(inv_data["items"]) == 1
+    assert inv_data["items"][0]["quantity"] == 20
+
+
+def test_list_purchase_orders_pagination(client, admin_headers, db_session):
+    supplier_id, warehouse_id, product_id = _setup_po_dependencies(db_session)
+
+    # Create 2 POs
+    po1 = {"supplier_id": supplier_id, "items": [{"product_id": product_id, "quantity": 5, "unit_price": 10.00}]}
+    po2 = {"supplier_id": supplier_id, "items": [{"product_id": product_id, "quantity": 10, "unit_price": 20.00}]}
+    client.post("/api/v1/purchase-orders/", json=po1, headers=admin_headers)
+    client.post("/api/v1/purchase-orders/", json=po2, headers=admin_headers)
+
+    # List POs with page=1&size=1
+    res = client.get("/api/v1/purchase-orders/?page=1&size=1&sort_by=id&order=desc", headers=admin_headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["page"] == 1
+    assert data["size"] == 1
+    assert data["total"] == 2
+    assert len(data["items"]) == 1

@@ -1,18 +1,25 @@
 """Inventory business logic."""
 
-from typing import List
+import math
+from typing import List, Optional, Tuple
 
-from fastapi import HTTPException, status
-from sqlalchemy import select
+from fastapi import status
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppException
 from app.models import Inventory, Product, Warehouse
 from app.schemas.inventory import InventoryListResponse, StockAdjustment
 
 
 def list_inventory(
-    db: Session, warehouse_id: int | None = None, low_stock_only: bool = False
-) -> List[InventoryListResponse]:
+    db: Session,
+    warehouse_id: Optional[int] = None,
+    product_id: Optional[int] = None,
+    low_stock_only: bool = False,
+    page: int = 1,
+    size: int = 10,
+) -> Tuple[List[InventoryListResponse], int, int]:
     query = (
         select(
             Inventory.id,
@@ -29,11 +36,22 @@ def list_inventory(
     )
     if warehouse_id is not None:
         query = query.where(Inventory.warehouse_id == warehouse_id)
+    if product_id is not None:
+        query = query.where(Inventory.product_id == product_id)
     if low_stock_only:
         query = query.where(Inventory.quantity <= Inventory.reorder_level)
 
-    rows = db.execute(query.order_by(Product.name)).all()
-    return [
+    page = max(1, page)
+    size = min(100, max(1, size))
+
+    count_stmt = select(func.count()).select_from(query.subquery())
+    total = db.scalar(count_stmt) or 0
+    pages = math.ceil(total / size) if total > 0 else 0
+
+    offset = (page - 1) * size
+    rows = db.execute(query.order_by(Product.name).offset(offset).limit(size)).all()
+
+    items = [
         InventoryListResponse(
             id=r.id,
             product_id=r.product_id,
@@ -47,6 +65,7 @@ def list_inventory(
         )
         for r in rows
     ]
+    return items, total, pages
 
 
 def adjust_stock(
@@ -56,9 +75,9 @@ def adjust_stock(
     adjustment: StockAdjustment,
 ) -> Inventory:
     if not db.get(Product, product_id):
-        raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
+        raise AppException(message=f"Product {product_id} not found", status_code=404, code="not_found")
     if not db.get(Warehouse, warehouse_id):
-        raise HTTPException(status_code=404, detail=f"Warehouse {warehouse_id} not found")
+        raise AppException(message=f"Warehouse {warehouse_id} not found", status_code=404, code="not_found")
 
     inv = db.scalars(
         select(Inventory).where(
@@ -69,9 +88,10 @@ def adjust_stock(
 
     if inv is None:
         if adjustment.quantity_change < 0:
-            raise HTTPException(
+            raise AppException(
+                message="Cannot remove stock from an empty inventory record",
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot remove stock from an empty inventory record",
+                code="bad_request",
             )
         inv = Inventory(
             product_id=product_id,
@@ -83,9 +103,10 @@ def adjust_stock(
 
     new_quantity = inv.quantity + adjustment.quantity_change
     if new_quantity < 0:
-        raise HTTPException(
+        raise AppException(
+            message=f"Insufficient stock. Current: {inv.quantity}",
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Insufficient stock. Current: {inv.quantity}",
+            code="bad_request",
         )
     inv.quantity = new_quantity
     db.commit()

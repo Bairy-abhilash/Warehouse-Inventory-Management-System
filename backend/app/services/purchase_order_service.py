@@ -16,7 +16,7 @@ Rules enforced:
 """
 
 from decimal import Decimal
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from fastapi import status
 from sqlalchemy import select
@@ -38,6 +38,7 @@ from app.schemas.purchase_order import (
     ReceiveItem,
     ReceiveRequest,
 )
+from app.services.pagination_service import paginate_query
 
 # Allowed status transitions: current_status -> set of next statuses
 VALID_TRANSITIONS: dict[str, set[str]] = {
@@ -54,14 +55,35 @@ def _calculate_total(items) -> Decimal:
 
 
 def list_purchase_orders(
-    db: Session, status_filter: Optional[str] = None
-) -> List[PurchaseOrder]:
+    db: Session,
+    status_filter: Optional[str] = None,
+    supplier_id: Optional[int] = None,
+    sort_by: str = "id",
+    order: str = "desc",
+    page: int = 1,
+    size: int = 10,
+) -> Tuple[List[PurchaseOrder], int, int]:
     query = select(PurchaseOrder).options(selectinload(PurchaseOrder.items))
     if status_filter:
         if status_filter not in VALID_TRANSITIONS:
             raise AppException(message=f"Unknown status '{status_filter}'", status_code=400, code="bad_request")
         query = query.where(PurchaseOrder.status == status_filter)
-    return db.scalars(query.order_by(PurchaseOrder.id.desc())).all()
+    if supplier_id is not None:
+        query = query.where(PurchaseOrder.supplier_id == supplier_id)
+
+    sort_cols = {
+        "id": PurchaseOrder.id,
+        "order_date": PurchaseOrder.order_date,
+        "total_amount": PurchaseOrder.total_amount,
+        "status": PurchaseOrder.status,
+    }
+    col = sort_cols.get(sort_by.lower(), PurchaseOrder.id)
+    if order.lower() == "asc":
+        query = query.order_by(col.asc())
+    else:
+        query = query.order_by(col.desc())
+
+    return paginate_query(db, query, page=page, size=size)
 
 
 def get_purchase_order(db: Session, po_id: int) -> PurchaseOrder:

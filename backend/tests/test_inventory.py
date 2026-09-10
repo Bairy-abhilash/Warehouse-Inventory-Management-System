@@ -40,6 +40,7 @@ def test_inventory_adjust_and_list(client, admin_headers, db_session):
     )
     assert res_list.status_code == 200
     data = res_list.json()
-    assert len(data) == 1
-    assert data[0]["quantity"] == 15
-    assert data[0]["product_sku"] == "SKU-INV-001"
+    assert "items" in data
+    assert len(data["items"]) == 1
+    assert data["items"][0]["quantity"] == 15
+    assert data["items"][0]["product_sku"] == "SKU-INV-001"

@@ -1,7 +1,8 @@
 """Product business logic."""
 
 import logging
-from typing import List, Optional
+from decimal import Decimal
+from typing import List, Optional, Tuple
 
 from fastapi import status
 from sqlalchemy import select, or_
@@ -12,6 +13,7 @@ from app.core.errors import AppException
 from app.models import Product, Category, Supplier
 from app.schemas.product import ProductCreate, ProductUpdate
 from app.services import audit_service
+from app.services.pagination_service import paginate_query
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +24,13 @@ def list_products(
     supplier_id: Optional[int] = None,
     search: Optional[str] = None,
     active_only: bool = False,
-    limit: int = 100,
-) -> List[Product]:
+    min_price: Optional[Decimal] = None,
+    max_price: Optional[Decimal] = None,
+    sort_by: str = "name",
+    order: str = "asc",
+    page: int = 1,
+    size: int = 10,
+) -> Tuple[List[Product], int, int]:
     query = select(Product).options(
         selectinload(Product.category),
         selectinload(Product.supplier),
@@ -37,7 +44,25 @@ def list_products(
         query = query.where(or_(Product.name.ilike(like), Product.sku.ilike(like)))
     if active_only:
         query = query.where(Product.is_active.is_(True))
-    return db.scalars(query.order_by(Product.name).limit(limit)).all()
+    if min_price is not None:
+        query = query.where(Product.price >= min_price)
+    if max_price is not None:
+        query = query.where(Product.price <= max_price)
+
+    sort_columns = {
+        "name": Product.name,
+        "price": Product.price,
+        "sku": Product.sku,
+        "created_at": Product.created_at,
+        "reorder_level": Product.reorder_level,
+    }
+    col = sort_columns.get(sort_by.lower(), Product.name)
+    if order.lower() == "desc":
+        query = query.order_by(col.desc())
+    else:
+        query = query.order_by(col.asc())
+
+    return paginate_query(db, query, page=page, size=size)
 
 
 def get_product(db: Session, product_id: int) -> Product:

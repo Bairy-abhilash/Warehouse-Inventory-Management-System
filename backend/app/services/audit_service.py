@@ -1,6 +1,6 @@
 """Audit logging business logic."""
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.logging import logger
 from app.models import AuditLog, User
 from app.schemas.audit_log import AuditLogResponse
+from app.services.pagination_service import paginate_query
 
 
 def log_action(
@@ -37,9 +38,10 @@ def list_audit_logs(
     db: Session,
     entity_type: Optional[str] = None,
     user_id: Optional[int] = None,
-    limit: int = 100,
-) -> List[AuditLogResponse]:
-    """Fetch audit logs in reverse chronological order."""
+    page: int = 1,
+    size: int = 10,
+) -> Tuple[List[AuditLogResponse], int, int]:
+    """Fetch audit logs in reverse chronological order with pagination."""
     query = select(AuditLog).options(selectinload(AuditLog.user))
     
     if entity_type:
@@ -47,9 +49,10 @@ def list_audit_logs(
     if user_id is not None:
         query = query.where(AuditLog.user_id == user_id)
 
-    rows = db.scalars(query.order_by(AuditLog.id.desc()).limit(limit)).all()
+    query = query.order_by(AuditLog.id.desc())
+    items_db, total, pages = paginate_query(db, query, page=page, size=size)
 
-    return [
+    items = [
         AuditLogResponse(
             id=r.id,
             user_id=r.user_id,
@@ -60,5 +63,6 @@ def list_audit_logs(
             details=r.details,
             created_at=r.created_at,
         )
-        for r in rows
+        for r in items_db
     ]
+    return items, total, pages

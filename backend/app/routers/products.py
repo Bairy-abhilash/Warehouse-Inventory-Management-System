@@ -6,6 +6,7 @@ Permission model:
   - only admin can delete
 """
 
+from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, Response, status
@@ -13,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
 from app.db.session import get_db
+from app.schemas.pagination import PaginatedResponse
 from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate
 from app.services import product_service
 
@@ -23,23 +25,34 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=list[ProductResponse])
+@router.get("/", response_model=PaginatedResponse[ProductResponse])
 def list_products(
     category_id: Optional[int] = None,
     supplier_id: Optional[int] = None,
     search: Optional[str] = None,
     active_only: bool = False,
-    limit: int = Query(default=100, le=500),
+    min_price: Optional[Decimal] = None,
+    max_price: Optional[Decimal] = None,
+    sort_by: str = Query("name", description="Field to sort by: name, price, sku, created_at, reorder_level"),
+    order: str = Query("asc", description="Sort direction: asc or desc"),
+    page: int = Query(1, ge=1, description="Page number"),
+    size: int = Query(10, ge=1, le=100, description="Page size"),
     db: Session = Depends(get_db),
 ):
-    return product_service.list_products(
+    items, total, pages = product_service.list_products(
         db,
         category_id=category_id,
         supplier_id=supplier_id,
         search=search,
         active_only=active_only,
-        limit=limit,
+        min_price=min_price,
+        max_price=max_price,
+        sort_by=sort_by,
+        order=order,
+        page=page,
+        size=size,
     )
+    return PaginatedResponse.create(items=items, total=total, page=page, size=size)
 
 
 @router.get("/{product_id}", response_model=ProductResponse)
