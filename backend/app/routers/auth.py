@@ -11,7 +11,13 @@ from app.core.errors import AppException
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.session import get_db
 from app.models import Role, User
-from app.schemas.auth import TokenResponse, UserLogin, UserRegister, UserResponse
+from app.schemas.auth import (
+    PasswordChange,
+    TokenResponse,
+    UserLogin,
+    UserRegister,
+    UserResponse,
+)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -98,3 +104,22 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
 def me(current_user: User = Depends(get_current_user)):
     """Return the profile of the user who owns the supplied token."""
     return _user_to_response(current_user)
+
+
+@router.post("/change-password")
+def change_password(
+    payload: PasswordChange,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Allow an authenticated user to change their password."""
+    if not verify_password(payload.current_password, current_user.password_hash):
+        raise AppException(
+            message="Current password is incorrect",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="bad_request",
+        )
+
+    current_user.password_hash = hash_password(payload.new_password)
+    db.commit()
+    return {"message": "Password updated successfully"}

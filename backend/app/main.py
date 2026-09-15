@@ -5,6 +5,8 @@ Run:
     uvicorn app.main:app --reload
 """
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -26,11 +28,20 @@ from app.routers import (
     warehouses,
 )
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("%s v%s starting", settings.APP_NAME, settings.APP_VERSION)
+    yield
+    logger.info("%s shutting down", settings.APP_NAME)
+
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # ── Middleware (order matters: CORS outermost, then request logging) ──
@@ -56,11 +67,6 @@ app.include_router(inventory.router, prefix="/api/v1")
 app.include_router(purchase_orders.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
 app.include_router(audit_logs.router, prefix="/api/v1")
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    logger.info("%s v%s starting", settings.APP_NAME, settings.APP_VERSION)
 
 
 @app.get("/", tags=["Health"])

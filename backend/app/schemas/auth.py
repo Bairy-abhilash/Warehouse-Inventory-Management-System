@@ -34,3 +34,9 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+class PasswordChange(BaseModel):
+    """Request body for POST /auth/change-password."""
+    current_password: str
+    new_password: str = Field(..., min_length=6, max_length=128)

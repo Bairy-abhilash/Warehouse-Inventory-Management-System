@@ -16,7 +16,9 @@ def test_audit_logs_recorded_and_retrieved(client, admin_headers):
     # 2. Query Audit Logs endpoint as Admin
     audit_res = client.get("/api/v1/audit-logs/", headers=admin_headers)
     assert audit_res.status_code == 200
-    logs = audit_res.json()
+    data = audit_res.json()
+    assert "items" in data
+    logs = data["items"]
     assert len(logs) >= 1
     assert logs[0]["action"] == "CREATE"
     assert logs[0]["entity_type"] == "product"
