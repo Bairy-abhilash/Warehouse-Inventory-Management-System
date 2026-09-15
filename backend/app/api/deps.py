@@ -62,12 +62,16 @@ def require_roles(*allowed: str):
     """
     Dependency factory: restrict an endpoint to users with one of the
     given role names (case-insensitive).
+    Automatically maps 'staff' and 'employee' as equivalent role aliases.
 
     Usage:
         @router.delete("/products/{id}",
                        dependencies=[Depends(require_roles("admin"))])
     """
     allowed_lower = {r.lower() for r in allowed}
+    if "staff" in allowed_lower or "employee" in allowed_lower:
+        allowed_lower.add("staff")
+        allowed_lower.add("employee")
 
     def _checker(current_user: User = Depends(get_current_user)) -> User:
         user_role_name = current_user.role.name if (current_user and current_user.role) else ""
