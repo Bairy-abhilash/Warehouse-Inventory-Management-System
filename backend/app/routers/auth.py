@@ -3,7 +3,7 @@ Authentication routes: register, login, and current-user profile.
 """
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user
@@ -41,10 +41,18 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
             code="conflict",
         )
 
-    staff_role = db.scalars(select(Role).where(Role.name.ilike("staff"))).first()
-    if not staff_role:
+    # Find default role ("staff" or "employee", or fallback to role_id=3)
+    default_role = db.scalars(
+        select(Role).where(
+            or_(Role.name.ilike("staff"), Role.name.ilike("employee"))
+        )
+    ).first()
+    if not default_role:
+        default_role = db.get(Role, 3)
+
+    if not default_role:
         raise AppException(
-            message="Staff role not found in database",
+            message="Default user role not found in database",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             code="internal_error",
         )
@@ -53,7 +61,7 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
         username=payload.username,
         email=payload.email,
         password_hash=hash_password(payload.password),
-        role_id=staff_role.id,
+        role_id=default_role.id,
     )
     db.add(user)
     db.commit()
