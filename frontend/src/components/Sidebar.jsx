@@ -1,5 +1,8 @@
 /**
  * Sidebar Navigation
+ * ------------------
+ * Fixed left navigation, grouped by business area.
+ * On mobile it becomes an off-canvas drawer controlled by Layout.
  */
 
 import { NavLink } from 'react-router-dom';
@@ -37,17 +40,17 @@ const NAV_GROUPS = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ open = false, onNavigate }) {
   const { user } = useAuth();
 
   return (
-    <aside className="sidebar">
+    <aside id="app-sidebar" className={open ? 'sidebar open' : 'sidebar'}>
       <div className="sidebar-header">
         <h2>INVENTORY MS</h2>
-        <p>Enterprise Warehouse Platform</p>
+        <p>Inventory &amp; Warehouse System</p>
       </div>
 
-      <nav className="sidebar-nav">
+      <nav className="sidebar-nav" aria-label="Primary">
         {NAV_GROUPS.map((group) => (
           <div key={group.label}>
             <div className="sidebar-section">{group.label}</div>
@@ -55,6 +58,7 @@ export default function Sidebar() {
               <NavLink
                 key={item.to}
                 to={item.to}
+                onClick={onNavigate}
                 className={({ isActive }) => (isActive ? 'active' : '')}
               >
                 {item.label}
@@ -65,7 +69,7 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar-footer">
-        Logged in as <strong>{user?.username || user?.email || 'User'}</strong>
+        Signed in as <strong>{user?.username || user?.email || 'User'}</strong>
         <br />
         Role: <span style={{ textTransform: 'capitalize' }}>{user?.role_name || user?.role?.name || 'Staff'}</span>
       </div>
