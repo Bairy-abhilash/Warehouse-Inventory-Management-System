@@ -6,7 +6,12 @@
  * - Create new PO (draft) with multiple line items
  * - View PO details
  * - Transition status (submit, approve, cancel)
- * - Receive items (adds to inventory)
+ * - Receive items into an explicitly chosen warehouse (adds to inventory)
+ *
+ * Backend contract note: PurchaseOrderCreate has NO warehouse field.
+ * The warehouse is a parameter of POST /purchase-orders/{id}/receive —
+ * i.e. the backend's business rule is "warehouse is decided when stock
+ * physically arrives". The create form therefore does not ask for one.
  */
 
 import { useState, useEffect } from 'react';
@@ -37,10 +42,12 @@ export default function PurchaseOrders() {
   const [statusChange, setStatusChange] = useState(null); // {po, newStatus}
   const [receiveOpen, setReceiveOpen] = useState(null);
   const [receiveItems, setReceiveItems] = useState({});
+  const [receiveWarehouse, setReceiveWarehouse] = useState(''); // chosen explicitly at receive time
   const [saving, setSaving] = useState(false);
 
-  // Create form state
-  const [form, setForm] = useState({ supplier_id: '', warehouse_id: '', notes: '' });
+  // Create form state (backend PurchaseOrderCreate = supplier_id, items, notes —
+  // warehouse is NOT part of a PO; it is chosen when the stock is received)
+  const [form, setForm] = useState({ supplier_id: '', notes: '' });
   const [lineItems, setLineItems] = useState([]);
 
   const load = async () => {
@@ -67,7 +74,7 @@ export default function PurchaseOrders() {
 
   // ── Create PO ──────────────────────────────────────
   const openCreate = () => {
-    setForm({ supplier_id: '', warehouse_id: '', notes: '' });
+    setForm({ supplier_id: '', notes: '' });
     setLineItems([{ product_id: '', quantity_ordered: 1, unit_price: '' }]);
     setCreateOpen(true);
   };
@@ -142,10 +149,12 @@ export default function PurchaseOrders() {
   const openReceive = (po) => {
     const items = {};
     (po.items || []).forEach((item) => {
-      const remaining = (item.quantity || item.quantity_ordered || 0) - (item.received_quantity || item.quantity_received || 0);
+      const remaining = (item.quantity || 0) - (item.received_quantity || 0);
       items[item.id] = remaining > 0 ? remaining : 0;
     });
     setReceiveItems(items);
+    // Visible default — the user sees and can change where the stock lands.
+    setReceiveWarehouse(warehouses[0]?.id ? String(warehouses[0].id) : '');
     setReceiveOpen(po);
   };
 
@@ -163,8 +172,13 @@ export default function PurchaseOrders() {
         return;
       }
 
-      const whId = warehouses[0]?.id || 1;
-      await poAPI.receive(receiveOpen.id, whId, { items });
+      if (!receiveWarehouse) {
+        setError('Please select the warehouse receiving the stock');
+        setSaving(false);
+        return;
+      }
+
+      await poAPI.receive(receiveOpen.id, Number(receiveWarehouse), { items });
       setReceiveOpen(null);
       load();
       if (viewPO) {
@@ -242,21 +256,12 @@ export default function PurchaseOrders() {
             </button>
           </>}>
           <form onSubmit={handleCreate}>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Supplier *</label>
-                <select className="form-control" value={form.supplier_id} onChange={(e) => setForm({ ...form, supplier_id: e.target.value })} required>
-                  <option value="">Select supplier...</option>
-                  {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Warehouse *</label>
-                <select className="form-control" value={form.warehouse_id} onChange={(e) => setForm({ ...form, warehouse_id: e.target.value })} required>
-                  <option value="">Select warehouse...</option>
-                  {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-                </select>
-              </div>
+            <div className="form-group">
+              <label>Supplier *</label>
+              <select className="form-control" value={form.supplier_id} onChange={(e) => setForm({ ...form, supplier_id: e.target.value })} required>
+                <option value="">Select supplier...</option>
+                {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
             </div>
 
             <h4 style={{ margin: '16px 0 8px' }}>Line Items</h4>
@@ -371,11 +376,39 @@ export default function PurchaseOrders() {
         <Modal title={`Receive Items — PO #${receiveOpen.id}`} onClose={() => setReceiveOpen(null)}
           footer={<>
             <button className="btn btn-secondary" onClick={() => setReceiveOpen(null)}>Cancel</button>
-            <button className="btn btn-success" onClick={handleReceive} disabled={saving}>
+            <button
+              className="btn btn-success"
+              onClick={handleReceive}
+              disabled={saving || !receiveWarehouse || warehouses.length === 0}
+            >
               {saving ? 'Receiving...' : 'Confirm Stock Receipt'}
             </button>
           </>}>
           <form onSubmit={handleReceive}>
+            {warehouses.length === 0 ? (
+              <div className="alert alert-warning">
+                No warehouses exist yet. Create a warehouse before receiving stock.
+              </div>
+            ) : (
+              <div className="form-group">
+                <label htmlFor="receive-warehouse">Receive into warehouse *</label>
+                <select
+                  id="receive-warehouse"
+                  className="form-control"
+                  value={receiveWarehouse}
+                  onChange={(e) => setReceiveWarehouse(e.target.value)}
+                  required
+                >
+                  <option value="" disabled>Select warehouse...</option>
+                  {warehouses.map((w) => (
+                    <option key={w.id} value={String(w.id)}>{w.name}</option>
+                  ))}
+                </select>
+                <small style={{ color: 'var(--ink-muted)', fontSize: 12 }}>
+                  Received quantities will be added to this warehouse's inventory.
+                </small>
+              </div>
+            )}
             <div className="table-wrapper">
               <table>
                 <thead>
