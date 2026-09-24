@@ -15,14 +15,6 @@ export const authAPI = {
   me: () => client.get('/auth/me'),
 };
 
-// ─── Users & Roles ────────────────────────────────────
-export const userAPI = {
-  list: (params) => client.get('/users/', { params }),
-  roles: () => client.get('/users/roles'),
-  create: (data) => client.post('/users/', data),
-  update: (id, data) => client.put(`/users/${id}`, data),
-};
-
 // ─── Categories ───────────────────────────────────────
 export const categoryAPI = {
   list: (params) => client.get('/categories/', { params }),
@@ -84,10 +76,7 @@ export const dashboardAPI = {
   reports: () => client.get('/dashboard/reports'),
 };
 
-export const reportAPI = {
-  reports: () => client.get('/dashboard/reports'),
-  lowStock: () => client.get('/dashboard/reports'),
-  inventoryByCategory: () => client.get('/dashboard/reports'),
-  stockByWarehouse: () => client.get('/dashboard/reports'),
-  poSummary: () => client.get('/dashboard/reports'),
+// ─── Audit Logs (backend enforces admin/manager) ────
+export const auditAPI = {
+  list: (params) => client.get('/audit-logs/', { params }),
 };
