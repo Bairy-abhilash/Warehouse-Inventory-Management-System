@@ -35,13 +35,23 @@ const NAV_GROUPS = [
   {
     label: 'System',
     items: [
+      // roles = UX gating only; the backend enforces authorization itself
+      { to: '/audit-logs', label: 'Audit Logs', roles: ['admin', 'manager'] },
       { to: '/settings', label: 'Settings' },
     ],
   },
 ];
 
 export default function Sidebar({ open = false, onNavigate }) {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+
+  // Hide items whose backend endpoint would reject this user's role
+  const groups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter(
+      (item) => !item.roles || item.roles.some((r) => hasRole(r))
+    ),
+  }));
 
   return (
     <aside id="app-sidebar" className={open ? 'sidebar open' : 'sidebar'}>
@@ -51,7 +61,7 @@ export default function Sidebar({ open = false, onNavigate }) {
       </div>
 
       <nav className="sidebar-nav" aria-label="Primary">
-        {NAV_GROUPS.map((group) => (
+        {groups.map((group) => (
           <div key={group.label}>
             <div className="sidebar-section">{group.label}</div>
             {group.items.map((item) => (

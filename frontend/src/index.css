@@ -626,7 +626,21 @@ tbody tr:hover { background: var(--bg); }
   text-align: center;
 }
 
-/* ─── 19. Responsive — verified target: 390px ──────────────── */
+/* ─── 19. Pagination ───────────────────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.pagination-info { font-size: 13px; color: var(--ink-muted); }
+.pagination-controls { display: flex; gap: 8px; }
+
+/* ─── 20. Responsive — verified target: 390px ──────────────── */
 @media (max-width: 768px) {
   .menu-btn { display: inline-flex; }
 
