@@ -19,6 +19,7 @@ import Suppliers from './pages/Suppliers';
 import Inventory from './pages/Inventory';
 import PurchaseOrders from './pages/PurchaseOrders';
 import Reports from './pages/Reports';
+import AuditLogs from './pages/AuditLogs';
 import Settings from './pages/Settings';
 
 function App() {
@@ -55,6 +56,7 @@ function App() {
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/purchase-orders" element={<PurchaseOrders />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/audit-logs" element={<AuditLogs />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
 
