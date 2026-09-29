@@ -39,7 +39,7 @@ def list_inventory(
     if product_id is not None:
         query = query.where(Inventory.product_id == product_id)
     if low_stock_only:
-        query = query.where(Inventory.quantity <= Inventory.reorder_level)
+        query = query.where(Inventory.quantity < Inventory.reorder_level)
 
     page = max(1, page)
     size = min(100, max(1, size))
@@ -61,7 +61,7 @@ def list_inventory(
             product_name=r.product_name,
             product_sku=r.product_sku,
             warehouse_name=r.warehouse_name,
-            is_low_stock=r.quantity <= r.reorder_level,
+            is_low_stock=r.quantity < r.reorder_level,
         )
         for r in rows
     ]

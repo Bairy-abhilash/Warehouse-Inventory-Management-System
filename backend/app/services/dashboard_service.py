@@ -36,11 +36,11 @@ def get_dashboard(db: Session) -> DashboardResponse:
         .join(Product, Product.id == Inventory.product_id)
     ) or Decimal("0.00")
 
-    # Low stock: quantity <= reorder_level
+    # Low stock: quantity strictly below reorder_level (at the level = OK, shortfall 0)
     low_stock = db.scalar(
         select(func.count())
         .select_from(Inventory)
-        .where(Inventory.quantity <= Inventory.reorder_level)
+        .where(Inventory.quantity < Inventory.reorder_level)
     ) or 0
 
     # Pending POs: draft, submitted, approved (not yet received/cancelled)
@@ -76,7 +76,7 @@ def get_reports(db: Session) -> ReportResponse:
         .select_from(Inventory)
         .join(Product, Product.id == Inventory.product_id)
         .join(Warehouse, Warehouse.id == Inventory.warehouse_id)
-        .where(Inventory.quantity <= Inventory.reorder_level)
+        .where(Inventory.quantity < Inventory.reorder_level)
         .order_by(Product.name)
     ).all()
 
