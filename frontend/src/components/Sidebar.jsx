@@ -37,13 +37,13 @@ const NAV_GROUPS = [
     items: [
       // roles = UX gating only; the backend enforces authorization itself
       { to: '/audit-logs', label: 'Audit Logs', roles: ['admin', 'manager'] },
-      { to: '/settings', label: 'Settings' },
+      // Settings lives in the top-right account menu (UserButton), not here.
     ],
   },
 ];
 
 export default function Sidebar({ open = false, onNavigate }) {
-  const { user, hasRole } = useAuth();
+  const { hasRole } = useAuth();
 
   // Hide items whose backend endpoint would reject this user's role
   const groups = NAV_GROUPS.map((group) => ({
@@ -77,12 +77,6 @@ export default function Sidebar({ open = false, onNavigate }) {
           </div>
         ))}
       </nav>
-
-      <div className="sidebar-footer">
-        Signed in as <strong>{user?.username || user?.email || 'User'}</strong>
-        <br />
-        Role: <span style={{ textTransform: 'capitalize' }}>{user?.role_name || user?.role?.name || 'Staff'}</span>
-      </div>
     </aside>
   );
 }

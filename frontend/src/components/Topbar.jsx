@@ -1,17 +1,12 @@
 /**
  * Topbar
  * ------
- * Page title, mobile navigation toggle, current user, logout.
+ * Page title, mobile navigation toggle, and the account menu (UserButton).
  */
 
-import { useAuth } from '../context/AuthContext';
+import UserButton from './UserButton';
 
 export default function Topbar({ title, navOpen, onMenuClick }) {
-  const { user, logout } = useAuth();
-
-  const nameStr = user?.username || user?.email || 'Admin';
-  const initials = nameStr.substring(0, 2).toUpperCase();
-
   return (
     <header className="topbar">
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
@@ -32,16 +27,7 @@ export default function Topbar({ title, navOpen, onMenuClick }) {
         </button>
         <h1>{title}</h1>
       </div>
-      <div className="user-menu">
-        <div className="user-avatar">{initials}</div>
-        <div className="user-info">
-          <div className="name">{nameStr}</div>
-          <div className="role">{user?.role_name || user?.role?.name || 'Staff'}</div>
-        </div>
-        <button className="btn btn-secondary btn-sm" onClick={logout}>
-          Logout
-        </button>
-      </div>
+      <UserButton />
     </header>
   );
 }

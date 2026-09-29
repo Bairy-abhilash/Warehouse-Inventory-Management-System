@@ -84,29 +84,24 @@ export default function Settings() {
             <strong>Email:</strong><span>{user?.email}</span>
             <strong>Role:</strong>
             <span><span className="badge badge-primary">{user?.role_name || user?.role?.name}</span></span>
+            <strong>Password:</strong>
+            <span>
+              {!pwOpen && (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => { setPwOpen(true); setSuccess(''); }}
+                >
+                  Change Password
+                </button>
+              )}
+            </span>
           </div>
-        </div>
-      </div>
 
-      {/* Security — the form is hidden until the user clicks "Change Password" */}
-      <div className="card">
-        <div className="card-header">
-          <h3>Security</h3>
-          {!pwOpen && (
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setPwOpen(true); setSuccess(''); }}>
-              Change Password
-            </button>
-          )}
-        </div>
-        <div className="card-body">
-          {success && <div className="alert alert-success">{success}</div>}
+          {success && <div className="alert alert-success" style={{ marginTop: 16 }}>{success}</div>}
 
-          {!pwOpen ? (
-            <p style={{ color: 'var(--ink-muted)', fontSize: 14, margin: 0 }}>
-              Password: ••••••••
-            </p>
-          ) : (
-          <form onSubmit={handleChangePassword} noValidate style={{ maxWidth: 420 }}>
+          {pwOpen && (
+          <form onSubmit={handleChangePassword} noValidate style={{ maxWidth: 420, marginTop: 20 }}>
             {formError && <div className="alert alert-danger">{formError}</div>}
             <div className="form-group">
               <label htmlFor="pw-current">Current Password <span className="req">*</span></label>
