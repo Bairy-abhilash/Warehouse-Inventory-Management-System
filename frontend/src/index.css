@@ -628,6 +628,36 @@ tbody tr:hover { background: var(--bg); }
   margin-bottom: 24px;
 }
 
+/* Password field with Show/Hide toggle */
+.password-field { position: relative; }
+.password-field .form-control { padding-right: 60px; }
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.password-toggle:hover { color: var(--accent); background: var(--accent-soft); }
+
+/* Link row under login/register forms */
+.auth-switch {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.auth-switch a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.auth-switch a:hover { text-decoration: underline; }
+
 .login-hint {
   margin-top: 20px;
   padding: 12px;
@@ -702,4 +732,10 @@ tbody tr:hover { background: var(--bg); }
 
   .po-item-row { grid-template-columns: 1fr 1fr; }
   .modal-overlay { padding: 12px; }
+}
+
+/* Table footer totals (Reports → Warehouse Summary) */
+tfoot td {
+  background: var(--bg);
+  border-top: 2px solid var(--border);
 }
