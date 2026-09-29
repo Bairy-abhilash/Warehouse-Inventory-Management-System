@@ -52,14 +52,26 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const login = async (email, password) => {
-    const res = await authAPI.login(email, password);
-    const { access_token, user: userData } = res.data;
+  // Both /auth/login and /auth/register return the same TokenResponse
+  // { access_token, token_type, user }, so one helper stores the session.
+  const saveSession = (data) => {
+    const { access_token, user: userData } = data;
     setToken(access_token);
     setUser(userData);
     localStorage.setItem('token', access_token);
     localStorage.setItem('user', JSON.stringify(userData));
     return userData;
+  };
+
+  const login = async (email, password) => {
+    const res = await authAPI.login(email, password);
+    return saveSession(res.data);
+  };
+
+  // Backend assigns the default Employee/staff role to every self-registered user.
+  const register = async ({ username, email, password }) => {
+    const res = await authAPI.register({ username, email, password });
+    return saveSession(res.data);
   };
 
   const logout = () => {
@@ -88,6 +100,7 @@ export function AuthProvider({ children }) {
     loading,
     isAuthenticated: !!token,
     login,
+    register,
     logout,
     hasRole,
   };

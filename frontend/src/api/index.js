@@ -13,6 +13,12 @@ export const authAPI = {
     client.post('/auth/login', { email, password }),
   register: (data) => client.post('/auth/register', data),
   me: () => client.get('/auth/me'),
+  // Body shape is dictated by backend schema PasswordChange
+  changePassword: (currentPassword, newPassword) =>
+    client.post('/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
 };
 
 // ─── Categories ───────────────────────────────────────
