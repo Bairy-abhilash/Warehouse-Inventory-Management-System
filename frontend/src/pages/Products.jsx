@@ -34,6 +34,10 @@ export default function Products() {
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
+  // Field-level + modal-level save errors (kept out of the page-level alert
+  // so they are visible while the modal is open)
+  const [skuError, setSkuError] = useState('');
+  const [modalError, setModalError] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -78,7 +82,7 @@ export default function Products() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    setSaving(true); setError('');
+    setSaving(true); setError(''); setSkuError(''); setModalError('');
     try {
       const payload = {
         name: formData.name,
@@ -180,10 +184,18 @@ export default function Products() {
             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
           </>}>
           <form onSubmit={handleSave}>
+            {modalError && <div className="alert alert-danger">{modalError}</div>}
             <div className="form-row">
               <div className="form-group">
                 <label>SKU *</label>
-                <input className="form-control" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} required />
+                <input
+                  className="form-control"
+                  value={formData.sku}
+                  onChange={(e) => { setFormData({ ...formData, sku: e.target.value }); setSkuError(''); }}
+                  required
+                  aria-invalid={Boolean(skuError)}
+                />
+                {skuError && <div className="form-error">{skuError}</div>}
               </div>
               <div className="form-group">
                 <label>Name *</label>

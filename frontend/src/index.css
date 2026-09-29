@@ -640,6 +640,30 @@ tbody tr:hover { background: var(--bg); }
 .pagination-info { font-size: 13px; color: var(--ink-muted); }
 .pagination-controls { display: flex; gap: 8px; }
 
+/* ─── 19b. Dashboard asymmetric composition ──────────────────
+   Wider primary column + intentionally narrower secondary column. */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  align-items: start;
+}
+
+.attention-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.attention-row:last-child { border-bottom: none; }
+
+@media (max-width: 1024px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+}
+
 /* ─── 20. Responsive — verified target: 390px ──────────────── */
 @media (max-width: 768px) {
   .menu-btn { display: inline-flex; }
