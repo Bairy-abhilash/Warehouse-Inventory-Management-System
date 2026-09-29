@@ -630,19 +630,20 @@ tbody tr:hover { background: var(--bg); }
 
 /* Password field with Show/Hide toggle */
 .password-field { position: relative; }
-.password-field .form-control { padding-right: 60px; }
+.password-field .form-control { padding-right: 44px; }
 .password-toggle {
   position: absolute;
   top: 50%;
-  right: 8px;
+  right: 6px;
   transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
   border: none;
   background: transparent;
   color: var(--ink-muted);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 6px;
   cursor: pointer;
   border-radius: var(--radius-sm);
 }

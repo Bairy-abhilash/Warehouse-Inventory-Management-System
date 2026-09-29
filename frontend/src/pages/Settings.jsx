@@ -26,6 +26,7 @@ export default function Settings() {
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
 
   const setField = (name, value) => {
     setPw((f) => ({ ...f, [name]: value }));
@@ -56,6 +57,7 @@ export default function Settings() {
       const res = await authAPI.changePassword(pw.current, pw.next);
       setSuccess(res.data?.message || 'Password updated successfully');
       setPw({ current: '', next: '', confirm: '' });
+      setPwOpen(false);
     } catch (err) {
       const msg = getErrorMessage(err);
       // Backend returns 400 when the current password is wrong
@@ -86,16 +88,26 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Change Password */}
+      {/* Security — the form is hidden until the user clicks "Change Password" */}
       <div className="card">
         <div className="card-header">
-          <h3>Change Password</h3>
+          <h3>Security</h3>
+          {!pwOpen && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setPwOpen(true); setSuccess(''); }}>
+              Change Password
+            </button>
+          )}
         </div>
         <div className="card-body">
-          {formError && <div className="alert alert-danger">{formError}</div>}
           {success && <div className="alert alert-success">{success}</div>}
 
+          {!pwOpen ? (
+            <p style={{ color: 'var(--ink-muted)', fontSize: 14, margin: 0 }}>
+              Password: ••••••••
+            </p>
+          ) : (
           <form onSubmit={handleChangePassword} noValidate style={{ maxWidth: 420 }}>
+            {formError && <div className="alert alert-danger">{formError}</div>}
             <div className="form-group">
               <label htmlFor="pw-current">Current Password <span className="req">*</span></label>
               <PasswordInput
@@ -134,10 +146,26 @@ export default function Settings() {
               {fieldErrors.confirm && <div className="form-error">{fieldErrors.confirm}</div>}
             </div>
 
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Updating...' : 'Update Password'}
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Updating...' : 'Update Password'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={saving}
+                onClick={() => {
+                  setPwOpen(false);
+                  setPw({ current: '', next: '', confirm: '' });
+                  setFieldErrors({});
+                  setFormError('');
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </form>
+          )}
         </div>
       </div>
 
