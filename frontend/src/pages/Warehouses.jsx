@@ -1,5 +1,12 @@
 /**
  * Warehouses Page — CRUD for warehouses.
+ *
+ * Backend contract (app/schemas/warehouse.py) is exactly:
+ *   name (2–150, required), location (≤255, optional)
+ * There is NO code / address / is_active field on this resource, so the
+ * form and table only show what the API can actually store and return.
+ * The list endpoint takes no query params and returns the full list, so
+ * search is applied client-side over that complete dataset.
  */
 
 import { useState, useEffect } from 'react';
@@ -11,7 +18,7 @@ import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useAuth } from '../context/AuthContext';
 
-const EMPTY_FORM = { name: '', code: '', location: '', address: '', is_active: true };
+const EMPTY_FORM = { name: '', location: '' };
 
 export default function Warehouses() {
   const { hasRole } = useAuth();
@@ -25,37 +32,58 @@ export default function Warehouses() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [modalError, setModalError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
-      const res = await warehouseAPI.list({ search: search || undefined });
+      const res = await warehouseAPI.list();
       setItems(res.data?.items || res.data || []);
     } catch (err) { setError(getErrorMessage(err)); }
     finally { setLoading(false); }
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, [search]);
+  useEffect(() => { load(); }, []);
 
-  const openCreate = () => { setEditing(null); setFormData(EMPTY_FORM); setModalOpen(true); };
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? items.filter((w) => `${w.name} ${w.location || ''}`.toLowerCase().includes(q))
+    : items;
+
+  const openCreate = () => {
+    setEditing(null); setFormData(EMPTY_FORM);
+    setFieldErrors({}); setModalError('');
+    setModalOpen(true);
+  };
+
   const openEdit = (w) => {
     setEditing(w);
-    setFormData({ name: w.name, code: w.code, location: w.location || '', address: w.address || '', is_active: w.is_active });
+    setFormData({ name: w.name || '', location: w.location || '' });
+    setFieldErrors({}); setModalError('');
     setModalOpen(true);
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
-    setSaving(true); setError('');
+    setError(''); setModalError('');
+    const errs = {};
+    const name = formData.name.trim();
+    if (!name) errs.name = 'Name is required.';
+    else if (name.length < 2) errs.name = 'Name must be at least 2 characters.';
+    setFieldErrors(errs);
+    if (Object.keys(errs).length) return;
+
+    setSaving(true);
     try {
-      if (editing) await warehouseAPI.update(editing.id, formData);
-      else await warehouseAPI.create(formData);
-      setModalOpen(false);
-      load();
-    } catch (err) { setError(getErrorMessage(err)); }
+      const payload = { name, location: formData.location.trim() || null };
+      if (editing) await warehouseAPI.update(editing.id, payload);
+      else await warehouseAPI.create(payload);
+      setModalOpen(false); load();
+    } catch (err) { setModalError(getErrorMessage(err)); }
     finally { setSaving(false); }
   };
 
@@ -70,7 +98,11 @@ export default function Warehouses() {
     <div>
       <div className="toolbar">
         <div className="search-box">
-          <input placeholder="Search warehouses..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input
+            placeholder="Search warehouses..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
         {canEdit && <button className="btn btn-primary" onClick={openCreate}>+ Add Warehouse</button>}
       </div>
@@ -78,29 +110,26 @@ export default function Warehouses() {
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="card">
-        {loading ? <Loading /> : items.length === 0 ? (
-          <EmptyState icon="🏭" title="No warehouses found" />
+        {loading ? <Loading /> : filtered.length === 0 ? (
+          <EmptyState
+            title={items.length === 0 ? 'No warehouses found' : 'No matching warehouses'}
+            message={items.length === 0 ? 'Add a warehouse to get started.' : 'Try a different search term.'}
+          />
         ) : (
           <div className="table-wrapper">
             <table>
               <thead>
                 <tr>
-                  <th>Code</th><th>Name</th><th>Location</th><th>Status</th><th>Created</th>
+                  <th>Name</th><th>Location</th><th>Created</th>
                   {canEdit && <th>Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {items.map((w) => (
+                {filtered.map((w) => (
                   <tr key={w.id}>
-                    <td><strong>{w.code}</strong></td>
-                    <td>{w.name}</td>
+                    <td><strong>{w.name}</strong></td>
                     <td>{w.location || '-'}</td>
-                    <td>
-                      <span className={`badge ${w.is_active ? 'badge-success' : 'badge-gray'}`}>
-                        {w.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td>{new Date(w.created_at).toLocaleDateString()}</td>
+                    <td>{w.created_at ? new Date(w.created_at).toLocaleDateString() : '-'}</td>
                     {canEdit && (
                       <td>
                         <button className="btn btn-secondary btn-sm" onClick={() => openEdit(w)}>Edit</button>
@@ -123,29 +152,33 @@ export default function Warehouses() {
             <button className="btn btn-secondary" onClick={() => setModalOpen(false)}>Cancel</button>
             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
           </>}>
-          <form onSubmit={handleSave}>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Name *</label>
-                <input className="form-control" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label>Code *</label>
-                <input className="form-control" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} required />
-              </div>
+          <form onSubmit={handleSave} noValidate>
+            {modalError && <div className="alert alert-danger">{modalError}</div>}
+            <div className="form-group">
+              <label>Name<span className="req">*</span></label>
+              <input
+                className="form-control"
+                value={formData.name}
+                maxLength={150}
+                onChange={(e) => { setFormData({ ...formData, name: e.target.value }); setFieldErrors({ ...fieldErrors, name: '' }); }}
+                aria-invalid={Boolean(fieldErrors.name)}
+              />
+              {fieldErrors.name ? (
+                <div className="form-error">{fieldErrors.name}</div>
+              ) : (
+                <small className="field-hint">Max 150 characters</small>
+              )}
             </div>
             <div className="form-group">
               <label>Location</label>
-              <input className="form-control" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} />
-            </div>
-            <div className="form-group">
-              <label>Address</label>
-              <textarea className="form-control" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} />
-            </div>
-            <div className="form-group">
-              <label>
-                <input type="checkbox" checked={formData.is_active} onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })} /> Active
-              </label>
+              <input
+                className="form-control"
+                value={formData.location}
+                maxLength={255}
+                placeholder="e.g. Bengaluru, Karnataka"
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              />
+              <small className="field-hint">Max 255 characters</small>
             </div>
           </form>
         </Modal>

@@ -12,6 +12,8 @@
  * The warehouse is a parameter of POST /purchase-orders/{id}/receive —
  * i.e. the backend's business rule is "warehouse is decided when stock
  * physically arrives". The create form therefore does not ask for one.
+ * Likewise, schema `notes` has no DB column and the service ignores it,
+ * so the form does not offer a Notes field either.
  */
 
 import { useState, useEffect } from 'react';
@@ -45,19 +47,23 @@ export default function PurchaseOrders() {
   const [receiveWarehouse, setReceiveWarehouse] = useState(''); // chosen explicitly at receive time
   const [saving, setSaving] = useState(false);
 
-  // Create form state (backend PurchaseOrderCreate = supplier_id, items, notes —
-  // warehouse is NOT part of a PO; it is chosen when the stock is received)
-  const [form, setForm] = useState({ supplier_id: '', notes: '' });
+  // Create form state. PurchaseOrderCreate accepts supplier_id + items; its
+  // `notes` field has no DB column and the service ignores it, so the UI does
+  // not offer it (see header comment).
+  const [form, setForm] = useState({ supplier_id: '' });
   const [lineItems, setLineItems] = useState([]);
+  const [supplierError, setSupplierError] = useState('');
+  const [lineErrors, setLineErrors] = useState({});
+  const [modalError, setModalError] = useState('');
 
   const load = async () => {
     setLoading(true);
     try {
       const [poRes, supRes, whRes, prodRes] = await Promise.all([
         poAPI.list({ status_filter: statusFilter || undefined }),
-        supplierAPI.list({ active_only: true, limit: 500 }),
-        warehouseAPI.list({ active_only: true, limit: 500 }),
-        productAPI.list({ limit: 500 }),
+        supplierAPI.list(),
+        warehouseAPI.list(),
+        productAPI.list({ size: 100 }), // product dropdown covers first 100 products (backend max page size)
       ]);
       setPos(poRes.data?.items || poRes.data || []);
       setSuppliers(supRes.data?.items || supRes.data || []);
@@ -74,7 +80,8 @@ export default function PurchaseOrders() {
 
   // ── Create PO ──────────────────────────────────────
   const openCreate = () => {
-    setForm({ supplier_id: '', notes: '' });
+    setForm({ supplier_id: '' });
+    setSupplierError(''); setLineErrors({}); setModalError('');
     setLineItems([{ product_id: '', quantity_ordered: 1, unit_price: '' }]);
     setCreateOpen(true);
   };
@@ -89,13 +96,15 @@ export default function PurchaseOrders() {
     // Auto-fill price when product selected
     if (field === 'product_id' && value) {
       const prod = products.find((p) => p.id === Number(value));
-      if (prod) updated[idx].unit_price = prod.price || prod.unit_price || 0;
+      if (prod) updated[idx].unit_price = prod.price ?? '';
     }
+    if (field === 'product_id') setLineErrors((prev) => ({ ...prev, [idx]: '' }));
     setLineItems(updated);
   };
 
   const removeLineItem = (idx) => {
     setLineItems(lineItems.filter((_, i) => i !== idx));
+    setLineErrors({});
   };
 
   const poTotal = lineItems.reduce(
@@ -105,19 +114,20 @@ export default function PurchaseOrders() {
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    if (!form.supplier_id) {
-      setError('Please select supplier');
-      return;
-    }
-    if (lineItems.length === 0 || lineItems.some((i) => !i.product_id)) {
-      setError('Please add at least one valid line item');
-      return;
-    }
+    // Field-level validation: messages appear next to the inputs, inside the modal
+    const errs = {};
+    lineItems.forEach((item, idx) => {
+      if (!item.product_id) errs[idx] = 'Select a product for this line.';
+    });
+    setSupplierError(form.supplier_id ? '' : 'Supplier is required.');
+    setLineErrors(errs);
+    setModalError(lineItems.length === 0 ? 'Add at least one line item.' : '');
+    if (!form.supplier_id || Object.keys(errs).length || lineItems.length === 0) return;
+
     setSaving(true); setError('');
     try {
       await poAPI.create({
         supplier_id: Number(form.supplier_id),
-        notes: form.notes || null,
         items: lineItems.map((i) => ({
           product_id: Number(i.product_id),
           quantity: Number(i.quantity_ordered || i.quantity || 1),
@@ -126,7 +136,7 @@ export default function PurchaseOrders() {
       });
       setCreateOpen(false);
       load();
-    } catch (err) { setError(getErrorMessage(err)); }
+    } catch (err) { setModalError(getErrorMessage(err)); }
     finally { setSaving(false); }
   };
 
@@ -255,13 +265,20 @@ export default function PurchaseOrders() {
               {saving ? 'Creating...' : `Create PO (${fmtPrice(poTotal)})`}
             </button>
           </>}>
-          <form onSubmit={handleCreate}>
+          <form onSubmit={handleCreate} noValidate>
+            {modalError && <div className="alert alert-danger">{modalError}</div>}
             <div className="form-group">
-              <label>Supplier *</label>
-              <select className="form-control" value={form.supplier_id} onChange={(e) => setForm({ ...form, supplier_id: e.target.value })} required>
+              <label>Supplier<span className="req">*</span></label>
+              <select
+                className="form-control"
+                value={form.supplier_id}
+                onChange={(e) => { setForm({ ...form, supplier_id: e.target.value }); setSupplierError(''); }}
+                aria-invalid={Boolean(supplierError)}
+              >
                 <option value="">Select supplier...</option>
                 {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
+              {supplierError && <div className="form-error">{supplierError}</div>}
             </div>
 
             <h4 style={{ margin: '16px 0 8px' }}>Line Items</h4>
@@ -274,6 +291,7 @@ export default function PurchaseOrders() {
                       <option value="">Select product...</option>
                       {products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}
                     </select>
+                    {lineErrors[idx] && <div className="form-error">{lineErrors[idx]}</div>}
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
                     <input type="number" min="1" className="form-control" placeholder="Qty"
@@ -288,11 +306,6 @@ export default function PurchaseOrders() {
               ))}
             </div>
             <button type="button" className="btn btn-secondary btn-sm" onClick={addLineItem}>+ Add Item</button>
-
-            <div className="form-group" style={{ marginTop: 16 }}>
-              <label>Notes</label>
-              <textarea className="form-control" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-            </div>
           </form>
         </Modal>
       )}
@@ -323,7 +336,6 @@ export default function PurchaseOrders() {
             <p><strong>Supplier:</strong> {suppliers.find((s) => s.id === viewPO.supplier_id)?.name || viewPO.supplier?.name || `Supplier #${viewPO.supplier_id}`}</p>
             <p><strong>Status:</strong> <StatusBadge status={viewPO.status} /></p>
             <p><strong>Total Amount:</strong> <strong>{fmtPrice(viewPO.total_amount)}</strong></p>
-            {viewPO.notes && <p><strong>Notes:</strong> {viewPO.notes}</p>}
           </div>
 
           <div className="table-wrapper">
@@ -391,7 +403,7 @@ export default function PurchaseOrders() {
               </div>
             ) : (
               <div className="form-group">
-                <label htmlFor="receive-warehouse">Receive into warehouse *</label>
+                <label htmlFor="receive-warehouse">Receive into warehouse<span className="req">*</span></label>
                 <select
                   id="receive-warehouse"
                   className="form-control"

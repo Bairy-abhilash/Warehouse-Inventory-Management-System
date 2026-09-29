@@ -1,5 +1,11 @@
 /**
  * Suppliers Page — CRUD for suppliers.
+ *
+ * Backend contract (app/schemas/supplier.py) is exactly:
+ *   name (2–150, required), email (EmailStr ≤150), phone (≤30), address (TEXT)
+ * There is no contact_person / is_active field on this resource, so the form
+ * and table only show what the API stores and returns. The list endpoint
+ * returns the full list without query params → search is client-side.
  */
 
 import { useState, useEffect } from 'react';
@@ -11,7 +17,8 @@ import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useAuth } from '../context/AuthContext';
 
-const EMPTY_FORM = { name: '', contact_person: '', email: '', phone: '', address: '', is_active: true };
+const ADDRESS_MAX = 500; // frontend-only cap (backend stores TEXT)
+const EMPTY_FORM = { name: '', email: '', phone: '', address: '' };
 
 export default function Suppliers() {
   const { hasRole } = useAuth();
@@ -25,38 +32,69 @@ export default function Suppliers() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [modalError, setModalError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
-      const res = await supplierAPI.list({ search: search || undefined });
+      const res = await supplierAPI.list();
       setItems(res.data?.items || res.data || []);
     } catch (err) { setError(getErrorMessage(err)); }
     finally { setLoading(false); }
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, [search]);
+  useEffect(() => { load(); }, []);
 
-  const openCreate = () => { setEditing(null); setFormData(EMPTY_FORM); setModalOpen(true); };
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? items.filter((s) => `${s.name} ${s.email || ''} ${s.phone || ''}`.toLowerCase().includes(q))
+    : items;
+
+  const openCreate = () => {
+    setEditing(null); setFormData(EMPTY_FORM);
+    setFieldErrors({}); setModalError('');
+    setModalOpen(true);
+  };
+
   const openEdit = (s) => {
     setEditing(s);
     setFormData({
-      name: s.name, contact_person: s.contact_person || '', email: s.email || '',
-      phone: s.phone || '', address: s.address || '', is_active: s.is_active,
+      name: s.name || '', email: s.email || '',
+      phone: s.phone || '', address: s.address || '',
     });
+    setFieldErrors({}); setModalError('');
     setModalOpen(true);
   };
 
   const handleSave = async (e) => {
-    e.preventDefault(); setSaving(true); setError('');
+    e.preventDefault();
+    setError(''); setModalError('');
+    const errs = {};
+    const name = formData.name.trim();
+    const email = formData.email.trim();
+    if (!name) errs.name = 'Company name is required.';
+    else if (name.length < 2) errs.name = 'Company name must be at least 2 characters.';
+    // backend email column is EmailStr — validate before it reaches the API
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) errs.email = 'Enter a valid email address.';
+    setFieldErrors(errs);
+    if (Object.keys(errs).length) return;
+
+    setSaving(true);
     try {
-      if (editing) await supplierAPI.update(editing.id, formData);
-      else await supplierAPI.create(formData);
+      const payload = {
+        name,
+        email: email || null,
+        phone: formData.phone.trim() || null,
+        address: formData.address.trim() || null,
+      };
+      if (editing) await supplierAPI.update(editing.id, payload);
+      else await supplierAPI.create(payload);
       setModalOpen(false); load();
-    } catch (err) { setError(getErrorMessage(err)); }
+    } catch (err) { setModalError(getErrorMessage(err)); }
     finally { setSaving(false); }
   };
 
@@ -69,7 +107,11 @@ export default function Suppliers() {
     <div>
       <div className="toolbar">
         <div className="search-box">
-          <input placeholder="Search suppliers..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input
+            placeholder="Search suppliers..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
         {canEdit && <button className="btn btn-primary" onClick={openCreate}>+ Add Supplier</button>}
       </div>
@@ -77,29 +119,33 @@ export default function Suppliers() {
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="card">
-        {loading ? <Loading /> : items.length === 0 ? (
-          <EmptyState icon="🚚" title="No suppliers found" />
+        {loading ? <Loading /> : filtered.length === 0 ? (
+          <EmptyState
+            title={items.length === 0 ? 'No suppliers found' : 'No matching suppliers'}
+            message={items.length === 0 ? 'Add a supplier to get started.' : 'Try a different search term.'}
+          />
         ) : (
           <div className="table-wrapper">
             <table>
               <thead>
                 <tr>
-                  <th>Name</th><th>Contact Person</th><th>Email</th><th>Phone</th><th>Status</th>
+                  <th>Name</th><th>Email</th><th>Phone</th><th>Address</th>
                   {canEdit && <th>Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {items.map((s) => (
+                {filtered.map((s) => (
                   <tr key={s.id}>
                     <td><strong>{s.name}</strong></td>
-                    <td>{s.contact_person || '-'}</td>
                     <td>{s.email || '-'}</td>
                     <td>{s.phone || '-'}</td>
-                    <td><span className={`badge ${s.is_active ? 'badge-success' : 'badge-gray'}`}>{s.is_active ? 'Active' : 'Inactive'}</span></td>
+                    <td>{s.address || '-'}</td>
                     {canEdit && (
                       <td>
                         <button className="btn btn-secondary btn-sm" onClick={() => openEdit(s)}>Edit</button>
-                        {canDelete && <button className="btn btn-danger btn-sm" style={{ marginLeft: 6 }} onClick={() => setDeleteTarget(s)}>Delete</button>}
+                        {canDelete && (
+                          <button className="btn btn-danger btn-sm" style={{ marginLeft: 6 }} onClick={() => setDeleteTarget(s)}>Delete</button>
+                        )}
                       </td>
                     )}
                   </tr>
@@ -116,38 +162,61 @@ export default function Suppliers() {
             <button className="btn btn-secondary" onClick={() => setModalOpen(false)}>Cancel</button>
             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
           </>}>
-          <form onSubmit={handleSave}>
+          <form onSubmit={handleSave} noValidate>
+            {modalError && <div className="alert alert-danger">{modalError}</div>}
             <div className="form-group">
-              <label>Company Name *</label>
-              <input className="form-control" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
+              <label>Company Name<span className="req">*</span></label>
+              <input
+                className="form-control"
+                value={formData.name}
+                maxLength={150}
+                onChange={(e) => { setFormData({ ...formData, name: e.target.value }); setFieldErrors({ ...fieldErrors, name: '' }); }}
+                aria-invalid={Boolean(fieldErrors.name)}
+              />
+              {fieldErrors.name ? (
+                <div className="form-error">{fieldErrors.name}</div>
+              ) : (
+                <small className="field-hint">Max 150 characters</small>
+              )}
             </div>
             <div className="form-row">
-              <div className="form-group">
-                <label>Contact Person</label>
-                <input className="form-control" value={formData.contact_person} onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })} />
-              </div>
               <div className="form-group">
                 <label>Email</label>
-                <input type="email" className="form-control" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                <input
+                  type="email"
+                  className="form-control"
+                  value={formData.email}
+                  maxLength={150}
+                  placeholder="e.g. sales@supplier.com"
+                  onChange={(e) => { setFormData({ ...formData, email: e.target.value }); setFieldErrors({ ...fieldErrors, email: '' }); }}
+                  aria-invalid={Boolean(fieldErrors.email)}
+                />
+                {fieldErrors.email ? (
+                  <div className="form-error">{fieldErrors.email}</div>
+                ) : (
+                  <small className="field-hint">Max 150 characters</small>
+                )}
               </div>
-            </div>
-            <div className="form-row">
               <div className="form-group">
                 <label>Phone</label>
-                <input className="form-control" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
-              </div>
-              <div className="form-group">
-                <label>Status</label>
-                <select className="form-control" value={formData.is_active ? 'true' : 'false'}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.value === 'true' })}>
-                  <option value="true">Active</option>
-                  <option value="false">Inactive</option>
-                </select>
+                <input
+                  className="form-control"
+                  value={formData.phone}
+                  maxLength={30}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+                <small className="field-hint">Max 30 characters</small>
               </div>
             </div>
             <div className="form-group">
               <label>Address</label>
-              <textarea className="form-control" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} />
+              <textarea
+                className="form-control"
+                value={formData.address}
+                maxLength={ADDRESS_MAX}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              />
+              <small className="field-hint">Max {ADDRESS_MAX} characters</small>
             </div>
           </form>
         </Modal>
