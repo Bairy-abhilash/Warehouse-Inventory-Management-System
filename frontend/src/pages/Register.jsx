@@ -15,6 +15,7 @@ import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getErrorMessage } from '../api/client';
 import PasswordInput from '../components/PasswordInput';
+import ConditionalField from '../components/ConditionalField';
 
 const LIMITS = { username: { min: 3, max: 100 }, password: { min: 6, max: 128 } };
 
@@ -139,7 +140,8 @@ export default function Register() {
               : <span className="field-hint">At least {LIMITS.password.min} characters</span>}
           </div>
 
-          <div className="form-group">
+          {/* Confirm Password only appears once a password has been typed */}
+          <ConditionalField open={form.password.length > 0}>
             <label htmlFor="reg-confirm">Confirm Password <span className="req">*</span></label>
             <PasswordInput
               id="reg-confirm"
@@ -150,7 +152,7 @@ export default function Register() {
               maxLength={LIMITS.password.max}
             />
             {fieldErrors.confirm && <div className="form-error">{fieldErrors.confirm}</div>}
-          </div>
+          </ConditionalField>
 
           <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%' }} disabled={loading}>
             {loading ? 'Creating account...' : 'Create Account'}
