@@ -93,3 +93,63 @@ def test_list_products_pagination_and_sorting(client, admin_headers):
     search_data = search_res.json()
     assert len(search_data["items"]) == 1
     assert search_data["items"][0]["sku"] == "SKU-CHEAP-01"
+
+
+def test_delete_product_with_stock_is_blocked_with_clear_message(client, admin_headers, db_session):
+    """
+    A product that has inventory rows cannot be deleted. The API must return
+    409 with a human-readable message (no raw SQL) and structured details.
+    """
+    from app.models import Warehouse
+
+    wh = Warehouse(name="Delete Test WH", location="Zone D")
+    db_session.add(wh)
+    db_session.commit()
+
+    res = client.post(
+        "/api/v1/products/",
+        json={"name": "Boxed Item", "sku": "SKU-DEL-001", "price": 5.0, "reorder_level": 1},
+        headers=admin_headers,
+    )
+    assert res.status_code == 201
+    pid = res.json()["id"]
+
+    res = client.post(
+        f"/api/v1/inventory/adjust?product_id={pid}&warehouse_id={wh.id}",
+        json={"quantity_change": 3, "reason": "seed"},
+        headers=admin_headers,
+    )
+    assert res.status_code == 200
+
+    res = client.delete(f"/api/v1/products/{pid}", headers=admin_headers)
+    assert res.status_code == 409
+    err = res.json()["error"]
+    assert err["code"] == "conflict"
+    assert "Boxed Item" in err["message"]
+    assert "stock records in 1 warehouse" in err["message"]
+    assert "violates" not in err["message"]  # no leaked SQL
+    assert err["details"] == {"inventory_rows": 1, "purchase_order_lines": 0}
+
+
+def test_product_audit_rows_record_user_and_entity_id(client, admin_headers):
+    """CREATE / UPDATE / DELETE on a product must be attributed to the acting user."""
+    res = client.post(
+        "/api/v1/products/",
+        json={"name": "Audited Item", "sku": "SKU-AUD-001", "price": 9.0},
+        headers=admin_headers,
+    )
+    assert res.status_code == 201
+    pid = res.json()["id"]
+
+    assert client.patch(f"/api/v1/products/{pid}", json={"price": 12.5}, headers=admin_headers).status_code == 200
+    assert client.delete(f"/api/v1/products/{pid}", headers=admin_headers).status_code == 204
+
+    logs = client.get("/api/v1/audit-logs/?entity_type=product&size=50", headers=admin_headers).json()["items"]
+    mine = [l for l in logs if l["entity_id"] == pid]
+    actions = sorted(l["action"] for l in mine)
+    assert actions == ["CREATE", "DELETE", "UPDATE"]
+    for l in mine:
+        assert l["username"] == "admin_test"
+        assert l["user_id"] is not None
+    upd = next(l for l in mine if l["action"] == "UPDATE")
+    assert "price" in upd["details"]

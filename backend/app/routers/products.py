@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
 from app.db.session import get_db
+from app.models import User
 from app.schemas.pagination import PaginatedResponse
 from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate
 from app.services import product_service
@@ -66,8 +67,12 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_roles("admin", "manager"))],
 )
-def create_product(payload: ProductCreate, db: Session = Depends(get_db)):
-    return product_service.create_product(db, payload)
+def create_product(
+    payload: ProductCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return product_service.create_product(db, payload, user_id=current_user.id)
 
 
 @router.patch(
@@ -76,9 +81,12 @@ def create_product(payload: ProductCreate, db: Session = Depends(get_db)):
     dependencies=[Depends(require_roles("admin", "manager"))],
 )
 def update_product(
-    product_id: int, payload: ProductUpdate, db: Session = Depends(get_db)
+    product_id: int,
+    payload: ProductUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    return product_service.update_product(db, product_id, payload)
+    return product_service.update_product(db, product_id, payload, user_id=current_user.id)
 
 
 @router.delete(
@@ -86,6 +94,10 @@ def update_product(
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(require_roles("admin"))],
 )
-def delete_product(product_id: int, db: Session = Depends(get_db)):
-    product_service.delete_product(db, product_id)
+def delete_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    product_service.delete_product(db, product_id, user_id=current_user.id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -5,12 +5,12 @@ from decimal import Decimal
 from typing import List, Optional, Tuple
 
 from fastapi import status
-from sqlalchemy import select, or_
+from sqlalchemy import func, select, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import AppException
-from app.models import Product, Category, Supplier
+from app.models import Product, Category, Supplier, Inventory, PurchaseOrderItem
 from app.schemas.product import ProductCreate, ProductUpdate
 from app.services import audit_service
 from app.services.pagination_service import paginate_query
@@ -91,7 +91,7 @@ def _validate_references(db: Session, category_id: Optional[int], supplier_id: O
         )
 
 
-def create_product(db: Session, data: ProductCreate) -> Product:
+def create_product(db: Session, data: ProductCreate, user_id: Optional[int] = None) -> Product:
     _validate_references(db, data.category_id, data.supplier_id)
 
     existing = db.scalars(select(Product).where(Product.sku == data.sku)).first()
@@ -105,8 +105,14 @@ def create_product(db: Session, data: ProductCreate) -> Product:
     obj = Product(**data.model_dump())
     db.add(obj)
     try:
+        db.flush()  # assigns obj.id without committing, so the audit row can reference it
         audit_service.log_action(
-            db, user_id=None, action="CREATE", entity_type="product", entity_id=None, details=f"Created product {data.name} (SKU: {data.sku})"
+            db,
+            user_id=user_id,
+            action="CREATE",
+            entity_type="product",
+            entity_id=obj.id,
+            details=f"Created product {data.name} (SKU: {data.sku})",
         )
         db.commit()
     except IntegrityError as exc:
@@ -122,7 +128,9 @@ def create_product(db: Session, data: ProductCreate) -> Product:
     return obj
 
 
-def update_product(db: Session, product_id: int, data: ProductUpdate) -> Product:
+def update_product(
+    db: Session, product_id: int, data: ProductUpdate, user_id: Optional[int] = None
+) -> Product:
     obj = get_product(db, product_id)
     payload = data.model_dump(exclude_unset=True)
 
@@ -139,26 +147,71 @@ def update_product(db: Session, product_id: int, data: ProductUpdate) -> Product
                 code="conflict",
             )
 
+    changed = [key for key, value in payload.items() if getattr(obj, key) != value]
     for key, value in payload.items():
         setattr(obj, key, value)
+
+    if changed:
+        audit_service.log_action(
+            db,
+            user_id=user_id,
+            action="UPDATE",
+            entity_type="product",
+            entity_id=obj.id,
+            details=f"Updated product {obj.name} (SKU: {obj.sku}): {', '.join(changed)}",
+        )
     db.commit()
     db.refresh(obj)
     return obj
 
 
-def delete_product(db: Session, product_id: int) -> None:
+def delete_product(db: Session, product_id: int, user_id: Optional[int] = None) -> None:
     obj = get_product(db, product_id)
+
+    # ── Business rule: a product with history cannot be hard-deleted ──
+    # inventory.product_id and purchase_order_items.product_id are NOT NULL
+    # foreign keys, so deleting the product would either orphan real stock /
+    # order lines or fail at the database. Check first and explain clearly.
+    stock_rows = db.scalar(
+        select(func.count()).select_from(Inventory).where(Inventory.product_id == product_id)
+    ) or 0
+    po_lines = db.scalar(
+        select(func.count()).select_from(PurchaseOrderItem).where(PurchaseOrderItem.product_id == product_id)
+    ) or 0
+
+    if stock_rows or po_lines:
+        reasons = []
+        if stock_rows:
+            reasons.append(f"stock records in {stock_rows} warehouse{'s' if stock_rows != 1 else ''}")
+        if po_lines:
+            reasons.append(f"{po_lines} purchase order line{'s' if po_lines != 1 else ''}")
+        raise AppException(
+            message=(
+                f"Cannot delete '{obj.name}' ({obj.sku}) because it has {' and '.join(reasons)}. "
+                "Set the product to inactive instead, or remove its stock and purchase order history first."
+            ),
+            status_code=status.HTTP_409_CONFLICT,
+            code="conflict",
+            details={"inventory_rows": stock_rows, "purchase_order_lines": po_lines},
+        )
+
     try:
         audit_service.log_action(
-            db, user_id=None, action="DELETE", entity_type="product", entity_id=product_id, details=f"Deleted product {obj.name}"
+            db,
+            user_id=user_id,
+            action="DELETE",
+            entity_type="product",
+            entity_id=product_id,
+            details=f"Deleted product {obj.name} (SKU: {obj.sku})",
         )
         db.delete(obj)
         db.commit()
-    except IntegrityError as exc:
+    except IntegrityError:
+        # Safety net for any reference we did not anticipate; never leak raw SQL to clients.
         db.rollback()
-        logger.exception("Database constraint violation while deleting product")
+        logger.exception("Database constraint violation while deleting product %s", product_id)
         raise AppException(
-            message=f"Cannot delete product used by inventory or purchase orders: {exc.orig}",
+            message=f"Cannot delete '{obj.name}' because other records still reference it.",
             status_code=status.HTTP_409_CONFLICT,
             code="conflict",
         )
