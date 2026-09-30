@@ -22,7 +22,7 @@ import { useState, useEffect } from 'react';
 import { auditAPI } from '../api';
 import { getErrorMessage } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import Loading from '../components/Loading';
+import { TableSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import Pagination from '../components/Pagination';
 
@@ -110,7 +110,7 @@ export default function AuditLogs() {
 
       <div className="card">
         {loading ? (
-          <Loading message="Loading audit trail..." />
+          <TableSkeleton columns={5} />
         ) : logs.length === 0 ? (
           <EmptyState
             title="No audit events"

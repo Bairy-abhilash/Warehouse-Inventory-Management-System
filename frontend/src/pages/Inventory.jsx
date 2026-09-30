@@ -16,7 +16,7 @@
 import { useState, useEffect } from 'react';
 import { inventoryAPI, warehouseAPI } from '../api';
 import { getErrorMessage } from '../api/client';
-import Loading from '../components/Loading';
+import { TableSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
@@ -123,7 +123,7 @@ export default function Inventory() {
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="card">
-        {loading ? <Loading /> : items.length === 0 ? (
+        {loading ? <TableSkeleton columns={7} /> : items.length === 0 ? (
           <EmptyState
             title="No inventory records found"
             message="Stock will appear here once products are received into warehouses."

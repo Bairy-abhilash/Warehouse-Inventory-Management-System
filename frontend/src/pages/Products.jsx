@@ -17,7 +17,7 @@
 import { useState, useEffect } from 'react';
 import { productAPI, categoryAPI, supplierAPI } from '../api';
 import { getErrorMessage } from '../api/client';
-import Loading from '../components/Loading';
+import { TableSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -200,7 +200,7 @@ export default function Products() {
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="card">
-        {loading ? <Loading /> : items.length === 0 ? (
+        {loading ? <TableSkeleton columns={8} /> : items.length === 0 ? (
           <EmptyState title="No products found" message="Add a product to get started." />
         ) : (
           <>

@@ -9,7 +9,7 @@
 import { useState, useEffect } from 'react';
 import { categoryAPI } from '../api';
 import { getErrorMessage } from '../api/client';
-import Loading from '../components/Loading';
+import { TableSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -123,7 +123,7 @@ export default function Categories() {
 
       <div className="card">
         {loading ? (
-          <Loading />
+          <TableSkeleton columns={4} />
         ) : filtered.length === 0 ? (
           <EmptyState
             title={categories.length === 0 ? 'No categories found' : 'No matching categories'}

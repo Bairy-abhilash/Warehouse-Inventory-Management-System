@@ -16,7 +16,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { dashboardAPI, poAPI, supplierAPI } from '../api';
 import { getErrorMessage } from '../api/client';
-import Loading from '../components/Loading';
+import { DashboardSkeleton } from '../components/Skeleton';
 import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
 
@@ -53,7 +53,7 @@ export default function Dashboard() {
     }
   };
 
-  if (loading) return <Loading message="Loading dashboard..." />;
+  if (loading) return <DashboardSkeleton />;
   if (error) return <div className="alert alert-danger">{error}</div>;
   if (!stats) return null;
 

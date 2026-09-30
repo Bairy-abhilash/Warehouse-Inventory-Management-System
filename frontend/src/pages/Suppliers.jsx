@@ -11,7 +11,7 @@
 import { useState, useEffect } from 'react';
 import { supplierAPI } from '../api';
 import { getErrorMessage } from '../api/client';
-import Loading from '../components/Loading';
+import { TableSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -119,7 +119,7 @@ export default function Suppliers() {
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="card">
-        {loading ? <Loading /> : filtered.length === 0 ? (
+        {loading ? <TableSkeleton columns={5} /> : filtered.length === 0 ? (
           <EmptyState
             title={items.length === 0 ? 'No suppliers found' : 'No matching suppliers'}
             message={items.length === 0 ? 'Add a supplier to get started.' : 'Try a different search term.'}

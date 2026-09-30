@@ -19,7 +19,7 @@
 import { useState, useEffect } from 'react';
 import { poAPI, supplierAPI, warehouseAPI, productAPI } from '../api';
 import { getErrorMessage } from '../api/client';
-import Loading from '../components/Loading';
+import { TableSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -223,7 +223,7 @@ export default function PurchaseOrders() {
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="card">
-        {loading ? <Loading /> : pos.length === 0 ? (
+        {loading ? <TableSkeleton columns={6} /> : pos.length === 0 ? (
           <EmptyState title="No purchase orders found" message="Create your first purchase order to start tracking procurement." />
         ) : (
           <div className="table-wrapper">

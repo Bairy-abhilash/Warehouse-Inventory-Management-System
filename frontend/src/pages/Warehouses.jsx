@@ -12,7 +12,7 @@
 import { useState, useEffect } from 'react';
 import { warehouseAPI } from '../api';
 import { getErrorMessage } from '../api/client';
-import Loading from '../components/Loading';
+import { TableSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -110,7 +110,7 @@ export default function Warehouses() {
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="card">
-        {loading ? <Loading /> : filtered.length === 0 ? (
+        {loading ? <TableSkeleton columns={4} /> : filtered.length === 0 ? (
           <EmptyState
             title={items.length === 0 ? 'No warehouses found' : 'No matching warehouses'}
             message={items.length === 0 ? 'Add a warehouse to get started.' : 'Try a different search term.'}

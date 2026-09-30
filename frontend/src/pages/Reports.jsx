@@ -16,7 +16,7 @@ import {
 } from 'recharts';
 import { dashboardAPI } from '../api';
 import { getErrorMessage } from '../api/client';
-import Loading from '../components/Loading';
+import { ReportsSkeleton } from '../components/Skeleton';
 
 export default function Reports() {
   const [loading, setLoading] = useState(true);
@@ -42,7 +42,7 @@ export default function Reports() {
     }
   };
 
-  if (loading) return <Loading message="Generating reports..." />;
+  if (loading) return <ReportsSkeleton />;
   if (error) return <div className="alert alert-danger">{error}</div>;
 
   // Exact rupee amount (tooltips and the table)
