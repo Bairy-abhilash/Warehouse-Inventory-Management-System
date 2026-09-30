@@ -14,12 +14,14 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../api';
 import { getErrorMessage } from '../api/client';
+import { useToast } from '../context/ToastContext';
 import PasswordInput from '../components/PasswordInput';
 
 const PW = { min: 6, max: 128 };
 
 export default function Settings() {
   const { user } = useAuth();
+  const toast = useToast();
 
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
   const [fieldErrors, setFieldErrors] = useState({});
@@ -55,6 +57,7 @@ export default function Settings() {
     setSaving(true);
     try {
       const res = await authAPI.changePassword(pw.current, pw.next);
+      toast.success(res.data?.message || 'Password updated successfully');
       setSuccess(res.data?.message || 'Password updated successfully');
       setPw({ current: '', next: '', confirm: '' });
       setPwOpen(false);

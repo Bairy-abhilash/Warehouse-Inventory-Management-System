@@ -19,6 +19,8 @@
 import { useState, useEffect } from 'react';
 import { poAPI, supplierAPI, warehouseAPI, productAPI } from '../api';
 import { getErrorMessage } from '../api/client';
+import { useToast } from '../context/ToastContext';
+import Tabs from '../components/Tabs';
 import { TableSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
@@ -26,8 +28,19 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
 
+// Backend status_filter values (see routers/purchase_orders.py); '' = no filter
+const PO_STATUS_TABS = [
+  { value: '', label: 'All' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'submitted', label: 'Submitted' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'received', label: 'Received' },
+  { value: 'cancelled', label: 'Cancelled' },
+];
+
 export default function PurchaseOrders() {
   const { hasRole } = useAuth();
+  const toast = useToast();
   const canManage = hasRole('admin', 'manager');
   const canReceive = hasRole('admin', 'manager', 'staff');
 
@@ -135,6 +148,7 @@ export default function PurchaseOrders() {
         })),
       });
       setCreateOpen(false);
+      toast.success('Purchase order created');
       load();
     } catch (err) { setModalError(getErrorMessage(err)); }
     finally { setSaving(false); }
@@ -145,6 +159,7 @@ export default function PurchaseOrders() {
     setSaving(true);
     try {
       await poAPI.updateStatus(statusChange.po.id, statusChange.newStatus);
+      toast.success(`PO #${statusChange.po.id} marked ${statusChange.newStatus}`);
       setStatusChange(null);
       load();
       if (viewPO) {
@@ -189,6 +204,7 @@ export default function PurchaseOrders() {
       }
 
       await poAPI.receive(receiveOpen.id, Number(receiveWarehouse), { items });
+      toast.success(`Stock received for PO #${receiveOpen.id}`);
       setReceiveOpen(null);
       load();
       if (viewPO) {
@@ -209,14 +225,12 @@ export default function PurchaseOrders() {
   return (
     <div>
       <div className="toolbar">
-        <select className="form-control" style={{ width: 180 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="">All Statuses</option>
-          <option value="draft">Draft</option>
-          <option value="submitted">Submitted</option>
-          <option value="approved">Approved</option>
-          <option value="received">Received</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
+        <Tabs
+          ariaLabel="Filter by status"
+          value={statusFilter}
+          onChange={setStatusFilter}
+          items={PO_STATUS_TABS}
+        />
         {canManage && <button className="btn btn-primary" onClick={openCreate}>+ New Purchase Order</button>}
       </div>
 

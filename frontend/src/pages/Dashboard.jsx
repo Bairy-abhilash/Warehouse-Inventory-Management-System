@@ -17,6 +17,7 @@ import { Link } from 'react-router-dom';
 import { dashboardAPI, poAPI, supplierAPI } from '../api';
 import { getErrorMessage } from '../api/client';
 import { DashboardSkeleton } from '../components/Skeleton';
+import AnimatedNumber from '../components/AnimatedNumber';
 import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
 
@@ -71,7 +72,7 @@ export default function Dashboard() {
     { label: 'Warehouses', value: stats.total_warehouses || 0, icon: '🏭', color: 'green' },
     { label: 'Suppliers', value: stats.total_suppliers || 0, icon: '🚚', color: 'cyan' },
     { label: 'Categories', value: stats.total_categories || 0, icon: '🏷️', color: 'gray' },
-    { label: 'Inventory Value', value: fmtCurrency(stats.inventory_value || 0), icon: '💰', color: 'green' },
+    { label: 'Inventory Value', value: stats.inventory_value || 0, format: fmtCurrency, icon: '💰', color: 'green' },
     { label: 'Low Stock Items', value: lowStock, icon: '⚠️', color: lowStock > 0 ? 'red' : 'gray' },
     { label: 'Pending POs', value: pendingPOs, icon: '🛒', color: 'orange' },
   ];
@@ -84,7 +85,7 @@ export default function Dashboard() {
           <div className="stat-card" key={c.label}>
             <div className={`stat-icon ${c.color}`}>{c.icon}</div>
             <div className="stat-info">
-              <div className="stat-value">{c.value}</div>
+              <div className="stat-value"><AnimatedNumber value={c.value} format={c.format} /></div>
               <div className="stat-label">{c.label}</div>
             </div>
           </div>

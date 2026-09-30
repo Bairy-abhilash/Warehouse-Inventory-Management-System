@@ -11,6 +11,7 @@
 import { useState, useEffect } from 'react';
 import { supplierAPI } from '../api';
 import { getErrorMessage } from '../api/client';
+import { useToast } from '../context/ToastContext';
 import { TableSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
@@ -22,6 +23,7 @@ const EMPTY_FORM = { name: '', email: '', phone: '', address: '' };
 
 export default function Suppliers() {
   const { hasRole } = useAuth();
+  const toast = useToast();
   const canEdit = hasRole('admin', 'manager');
   const canDelete = hasRole('admin');
 
@@ -93,13 +95,19 @@ export default function Suppliers() {
       };
       if (editing) await supplierAPI.update(editing.id, payload);
       else await supplierAPI.create(payload);
-      setModalOpen(false); load();
+      setModalOpen(false);
+      toast.success(editing ? `Supplier "${payload.name}" updated` : `Supplier "${payload.name}" created`);
+      load();
     } catch (err) { setModalError(getErrorMessage(err)); }
     finally { setSaving(false); }
   };
 
   const handleDelete = async () => {
-    try { await supplierAPI.delete(deleteTarget.id); setDeleteTarget(null); load(); }
+    try {
+      await supplierAPI.delete(deleteTarget.id);
+      toast.success(`Supplier "${deleteTarget.name}" deleted`);
+      setDeleteTarget(null); load();
+    }
     catch (err) { setError(getErrorMessage(err)); setDeleteTarget(null); }
   };
 

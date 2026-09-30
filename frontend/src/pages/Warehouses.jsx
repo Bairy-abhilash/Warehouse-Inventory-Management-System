@@ -12,6 +12,7 @@
 import { useState, useEffect } from 'react';
 import { warehouseAPI } from '../api';
 import { getErrorMessage } from '../api/client';
+import { useToast } from '../context/ToastContext';
 import { TableSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
@@ -22,6 +23,7 @@ const EMPTY_FORM = { name: '', location: '' };
 
 export default function Warehouses() {
   const { hasRole } = useAuth();
+  const toast = useToast();
   const canEdit = hasRole('admin', 'manager');
   const canDelete = hasRole('admin');
 
@@ -82,7 +84,9 @@ export default function Warehouses() {
       const payload = { name, location: formData.location.trim() || null };
       if (editing) await warehouseAPI.update(editing.id, payload);
       else await warehouseAPI.create(payload);
-      setModalOpen(false); load();
+      setModalOpen(false);
+      toast.success(editing ? `Warehouse "${name}" updated` : `Warehouse "${name}" created`);
+      load();
     } catch (err) { setModalError(getErrorMessage(err)); }
     finally { setSaving(false); }
   };
@@ -90,6 +94,7 @@ export default function Warehouses() {
   const handleDelete = async () => {
     try {
       await warehouseAPI.delete(deleteTarget.id);
+      toast.success(`Warehouse "${deleteTarget.name}" deleted`);
       setDeleteTarget(null); load();
     } catch (err) { setError(getErrorMessage(err)); setDeleteTarget(null); }
   };

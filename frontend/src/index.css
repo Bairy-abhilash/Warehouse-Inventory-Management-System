@@ -808,3 +808,78 @@ tfoot td {
   background: var(--bg);
   border-top: 2px solid var(--border);
 }
+
+/* ─── Toasts (bottom-right stack) ─────────────────────────── */
+.toast-viewport {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(360px, calc(100vw - 40px));
+  pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 12px 12px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  font-size: 13px;
+  color: var(--ink);
+}
+.toast-success { border-left-color: var(--success); }
+.toast-success .toast-icon { color: var(--success); }
+.toast-error   { border-left-color: var(--danger); }
+.toast-error   .toast-icon { color: var(--danger); }
+.toast-info    { border-left-color: var(--accent); }
+.toast-info    .toast-icon { color: var(--accent); }
+.toast-icon { display: inline-flex; margin-top: 1px; flex-shrink: 0; }
+.toast-message { flex: 1; line-height: 1.4; }
+.toast-close {
+  display: inline-flex; padding: 2px; border: none; background: transparent;
+  color: var(--ink-muted); cursor: pointer; border-radius: 4px; flex-shrink: 0;
+}
+.toast-close:hover { color: var(--ink); background: var(--bg); }
+
+/* ─── Tabs (segmented filter) ─────────────────────────────── */
+.tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-width: 100%;
+  overflow-x: auto;
+}
+.tab {
+  position: relative;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--ink); }
+.tab.active { color: var(--ink); }
+.tab-indicator {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+}
+.tab-label { position: relative; z-index: 1; }

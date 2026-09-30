@@ -17,6 +17,7 @@
 import { useState, useEffect } from 'react';
 import { productAPI, categoryAPI, supplierAPI } from '../api';
 import { getErrorMessage } from '../api/client';
+import { useToast } from '../context/ToastContext';
 import { TableSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
@@ -34,6 +35,7 @@ const EMPTY_FORM = {
 
 export default function Products() {
   const { hasRole } = useAuth();
+  const toast = useToast();
   const canEdit = hasRole('admin', 'manager');
   const canDelete = hasRole('admin');
 
@@ -154,7 +156,9 @@ export default function Products() {
       };
       if (editing) await productAPI.update(editing.id, payload);
       else await productAPI.create(payload);
-      setModalOpen(false); load();
+      setModalOpen(false);
+      toast.success(editing ? `Product ${payload.sku} updated` : `Product ${payload.sku} created`);
+      load();
     } catch (err) {
       const msg = getErrorMessage(err);
       const code = err.response?.data?.error?.code;
@@ -169,7 +173,11 @@ export default function Products() {
   };
 
   const handleDelete = async () => {
-    try { await productAPI.delete(deleteTarget.id); setDeleteTarget(null); load(); }
+    try {
+      await productAPI.delete(deleteTarget.id);
+      toast.success(`Product ${deleteTarget.sku} deleted`);
+      setDeleteTarget(null); load();
+    }
     catch (err) { setError(getErrorMessage(err)); setDeleteTarget(null); }
   };
 

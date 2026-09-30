@@ -9,6 +9,7 @@
 import { useState, useEffect } from 'react';
 import { categoryAPI } from '../api';
 import { getErrorMessage } from '../api/client';
+import { useToast } from '../context/ToastContext';
 import { TableSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
@@ -19,6 +20,7 @@ const DESC_MAX = 500; // frontend-only cap (backend stores TEXT)
 
 export default function Categories() {
   const { hasRole } = useAuth();
+  const toast = useToast();
   const canEdit = hasRole('admin', 'manager');
   const canDelete = hasRole('admin');
 
@@ -84,6 +86,7 @@ export default function Categories() {
       if (editing) await categoryAPI.update(editing.id, payload);
       else await categoryAPI.create(payload);
       setModalOpen(false);
+      toast.success(editing ? `Category "${name}" updated` : `Category "${name}" created`);
       load();
     } catch (err) {
       setModalError(getErrorMessage(err));
@@ -95,6 +98,7 @@ export default function Categories() {
   const handleDelete = async () => {
     try {
       await categoryAPI.delete(deleteTarget.id);
+      toast.success(`Category "${deleteTarget.name}" deleted`);
       setDeleteTarget(null);
       load();
     } catch (err) {

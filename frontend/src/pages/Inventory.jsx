@@ -16,6 +16,8 @@
 import { useState, useEffect } from 'react';
 import { inventoryAPI, warehouseAPI } from '../api';
 import { getErrorMessage } from '../api/client';
+import { useToast } from '../context/ToastContext';
+import Tabs from '../components/Tabs';
 import { TableSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
@@ -27,6 +29,7 @@ const REASON_MAX = 255;
 
 export default function Inventory() {
   const { hasRole } = useAuth();
+  const toast = useToast();
   const canAdjust = hasRole('admin', 'manager');
 
   const [items, setItems] = useState([]);
@@ -88,6 +91,8 @@ export default function Inventory() {
         quantity_change: Number(adjQty),
         reason: adjReason.trim() || null,
       });
+      const delta = Number(adjQty);
+      toast.success(`Stock ${delta > 0 ? 'increased' : 'decreased'} by ${Math.abs(delta)} for ${adjustModal.product_sku || adjustModal.product_name}`);
       setAdjustModal(null);
       load();
     } catch (err) {
@@ -110,13 +115,12 @@ export default function Inventory() {
           <option value="">All Warehouses</option>
           {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
         </select>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
-          <input
-            type="checkbox"
-            checked={lowOnly}
-            onChange={(e) => { setLowOnly(e.target.checked); setPage(1); }}
-          /> Low stock only
-        </label>
+        <Tabs
+          ariaLabel="Stock level filter"
+          value={lowOnly}
+          onChange={(v) => { setLowOnly(v); setPage(1); }}
+          items={[{ value: false, label: 'All stock' }, { value: true, label: 'Low stock' }]}
+        />
         <button className="btn btn-secondary" onClick={load}>Refresh</button>
       </div>
 
