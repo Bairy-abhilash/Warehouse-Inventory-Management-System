@@ -168,11 +168,7 @@ export default function Warehouses() {
                 onChange={(e) => { setFormData({ ...formData, name: e.target.value }); setFieldErrors({ ...fieldErrors, name: '' }); }}
                 aria-invalid={Boolean(fieldErrors.name)}
               />
-              {fieldErrors.name ? (
-                <div className="form-error">{fieldErrors.name}</div>
-              ) : (
-                <small className="field-hint">Max 150 characters</small>
-              )}
+              {fieldErrors.name && <div className="form-error">{fieldErrors.name}</div>}
             </div>
             <div className="form-group">
               <label>Location</label>
@@ -183,7 +179,6 @@ export default function Warehouses() {
                 placeholder="e.g. Bengaluru, Karnataka"
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
               />
-              <small className="field-hint">Max 255 characters</small>
             </div>
           </form>
         </Modal>

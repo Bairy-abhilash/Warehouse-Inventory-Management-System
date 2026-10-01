@@ -208,7 +208,6 @@ export default function Inventory() {
                 onChange={(e) => setAdjReason(e.target.value)}
                 placeholder="e.g. Stock count correction, damaged goods..."
               />
-              <small className="field-hint">Max {REASON_MAX} characters</small>
             </div>
           </form>
         </Modal>

@@ -181,11 +181,7 @@ export default function Suppliers() {
                 onChange={(e) => { setFormData({ ...formData, name: e.target.value }); setFieldErrors({ ...fieldErrors, name: '' }); }}
                 aria-invalid={Boolean(fieldErrors.name)}
               />
-              {fieldErrors.name ? (
-                <div className="form-error">{fieldErrors.name}</div>
-              ) : (
-                <small className="field-hint">Max 150 characters</small>
-              )}
+              {fieldErrors.name && <div className="form-error">{fieldErrors.name}</div>}
             </div>
             <div className="form-row">
               <div className="form-group">
@@ -199,11 +195,7 @@ export default function Suppliers() {
                   onChange={(e) => { setFormData({ ...formData, email: e.target.value }); setFieldErrors({ ...fieldErrors, email: '' }); }}
                   aria-invalid={Boolean(fieldErrors.email)}
                 />
-                {fieldErrors.email ? (
-                  <div className="form-error">{fieldErrors.email}</div>
-                ) : (
-                  <small className="field-hint">Max 150 characters</small>
-                )}
+                {fieldErrors.email && <div className="form-error">{fieldErrors.email}</div>}
               </div>
               <div className="form-group">
                 <label>Phone</label>
@@ -213,7 +205,6 @@ export default function Suppliers() {
                   maxLength={30}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 />
-                <small className="field-hint">Max 30 characters</small>
               </div>
             </div>
             <div className="form-group">
@@ -224,7 +215,6 @@ export default function Suppliers() {
                 maxLength={ADDRESS_MAX}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               />
-              <small className="field-hint">Max {ADDRESS_MAX} characters</small>
             </div>
           </form>
         </Modal>

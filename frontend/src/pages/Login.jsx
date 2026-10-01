@@ -15,6 +15,7 @@ import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getErrorMessage } from '../api/client';
 import PasswordInput from '../components/PasswordInput';
+import AuthLayout from '../components/AuthLayout';
 import ConditionalField from '../components/ConditionalField';
 
 export default function Login() {
@@ -87,10 +88,7 @@ export default function Login() {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-card">
-        <h1>INVENTORY MS</h1>
-        <p className="subtitle">Sign in to your account</p>
+    <AuthLayout heading="Welcome back." subheading="Sign in to manage stock, orders and warehouses.">
 
         {error && <div className="alert alert-danger">{error}</div>}
 
@@ -132,7 +130,6 @@ export default function Login() {
         <div className="auth-switch">
           Don't have an account? <Link to="/register">Create one</Link>
         </div>
-      </div>
-    </div>
+    </AuthLayout>
   );
 }

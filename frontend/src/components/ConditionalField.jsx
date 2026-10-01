@@ -1,14 +1,13 @@
 /**
  * ConditionalField
  * ----------------
- * A form field that animates open/closed. The outer container animates to
- * the *measured* height of its content (Motion's resize() observer), so the
- * reveal stays smooth even when a validation message appears underneath.
+ * A form field that animates open/closed. Uses Motion's native
+ * `height: "auto"` animation (Motion measures the content itself), so the
+ * label, input and any validation message underneath are always fully
+ * visible once open.
  *
- * Adapted from Motion's "Clerk: Conditional Field" example:
- *   - kept:    resize() height animation, AnimatePresence fade/slide
- *   - dropped: its own CSS, gradient button, 2rem rounding, onBlur auto-close
- *   - uses:    our .form-group / label / .form-error classes and tokens
+ * Adapted from Motion's "Clerk: Conditional Field" example — we keep the
+ * reveal behaviour and our own .form-group / .form-error styling.
  *
  * Usage:
  *   <ConditionalField open={showPassword}>
@@ -18,44 +17,32 @@
  *   </ConditionalField>
  */
 
-import { useCallback, useState } from 'react';
-import { AnimatePresence, motion, resize } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 
-// One-shot spring: precise, not bouncy. No looping animations anywhere.
 const TRANSITION = { type: 'spring', bounce: 0.15, visualDuration: 0.35 };
 
 export default function ConditionalField({ open, children }) {
-  const [height, setHeight] = useState(0);
-
-  // Ref callback: subscribe to size changes of the inner content.
-  // resize() returns an unsubscribe fn, which React calls on unmount.
-  const measureRef = useCallback((el) => {
-    if (!el) return undefined;
-    return resize(el, (_, { height: h }) => setHeight(h));
-  }, []);
-
   return (
-    <motion.div
-      animate={{ height: open ? height : 0 }}
-      transition={TRANSITION}
-      style={{ overflow: 'hidden', willChange: 'height' }}
-    >
-      <div ref={measureRef}>
-        <AnimatePresence mode="popLayout" initial={false}>
-          {open && (
-            <motion.div
-              key="conditional-field"
-              className="form-group"
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 0 }}
-              transition={TRANSITION}
-            >
-              {children}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </motion.div>
+    <AnimatePresence initial={false}>
+      {open && (
+        <motion.div
+          key="conditional-field"
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={TRANSITION}
+          style={{ overflow: 'hidden' }}
+        >
+          <motion.div
+            className="form-group"
+            initial={{ y: -8 }}
+            animate={{ y: 0 }}
+            transition={TRANSITION}
+          >
+            {children}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

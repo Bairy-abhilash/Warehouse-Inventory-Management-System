@@ -270,11 +270,7 @@ export default function Products() {
                   onChange={(e) => { setFormData({ ...formData, sku: e.target.value }); clearFieldError('sku'); }}
                   aria-invalid={Boolean(fieldErrors.sku)}
                 />
-                {fieldErrors.sku ? (
-                  <div className="form-error">{fieldErrors.sku}</div>
-                ) : (
-                  <small className="field-hint">Max 100 characters</small>
-                )}
+                {fieldErrors.sku && <div className="form-error">{fieldErrors.sku}</div>}
               </div>
               <div className="form-group">
                 <label>Name<span className="req">*</span></label>
@@ -285,11 +281,7 @@ export default function Products() {
                   onChange={(e) => { setFormData({ ...formData, name: e.target.value }); clearFieldError('name'); }}
                   aria-invalid={Boolean(fieldErrors.name)}
                 />
-                {fieldErrors.name ? (
-                  <div className="form-error">{fieldErrors.name}</div>
-                ) : (
-                  <small className="field-hint">Max 150 characters</small>
-                )}
+                {fieldErrors.name && <div className="form-error">{fieldErrors.name}</div>}
               </div>
             </div>
             <div className="form-group">
@@ -300,7 +292,6 @@ export default function Products() {
                 maxLength={DESC_MAX}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
-              <small className="field-hint">Max {DESC_MAX} characters</small>
             </div>
             <div className="form-row">
               <div className="form-group">
@@ -352,7 +343,7 @@ export default function Products() {
                   placeholder="pcs"
                   onChange={(e) => setFormData({ ...formData, unit_of_measure: e.target.value })}
                 />
-                <small className="field-hint">Max 20 characters · defaults to pcs</small>
+                <small className="field-hint">Defaults to pcs</small>
               </div>
             </div>
           </form>

@@ -15,6 +15,7 @@ import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getErrorMessage } from '../api/client';
 import PasswordInput from '../components/PasswordInput';
+import AuthLayout from '../components/AuthLayout';
 import ConditionalField from '../components/ConditionalField';
 
 const LIMITS = { username: { min: 3, max: 100 }, password: { min: 6, max: 128 } };
@@ -85,10 +86,7 @@ export default function Register() {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-card">
-        <h1>INVENTORY MS</h1>
-        <p className="subtitle">Create your account</p>
+    <AuthLayout heading="Create your account." subheading="You will be added as an Employee. An administrator can change your role later.">
 
         {error && <div className="alert alert-danger">{error}</div>}
 
@@ -105,9 +103,7 @@ export default function Register() {
               autoComplete="username"
               maxLength={LIMITS.username.max}
             />
-            {fieldErrors.username
-              ? <div className="form-error">{fieldErrors.username}</div>
-              : <span className="field-hint">{LIMITS.username.min}–{LIMITS.username.max} characters</span>}
+            {fieldErrors.username && <div className="form-error">{fieldErrors.username}</div>}
           </div>
 
           <div className="form-group">
@@ -162,7 +158,6 @@ export default function Register() {
         <div className="auth-switch">
           Already have an account? <Link to="/login">Sign in</Link>
         </div>
-      </div>
-    </div>
+    </AuthLayout>
   );
 }

@@ -196,11 +196,7 @@ export default function Categories() {
                 onChange={(e) => { setFormData({ ...formData, name: e.target.value }); setFieldErrors({ ...fieldErrors, name: '' }); }}
                 aria-invalid={Boolean(fieldErrors.name)}
               />
-              {fieldErrors.name ? (
-                <div className="form-error">{fieldErrors.name}</div>
-              ) : (
-                <small className="field-hint">Max 100 characters</small>
-              )}
+              {fieldErrors.name && <div className="form-error">{fieldErrors.name}</div>}
             </div>
             <div className="form-group">
               <label>Description</label>
@@ -210,7 +206,6 @@ export default function Categories() {
                 maxLength={DESC_MAX}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
-              <small className="field-hint">Max {DESC_MAX} characters</small>
             </div>
           </form>
         </Modal>
